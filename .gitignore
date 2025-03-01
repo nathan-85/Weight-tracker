@@ -1,0 +1,21 @@
+frontend/node_modules/
+run_debug.bat
+venv/
+.DS_Store
+
+# Network shares
+.Spotlight-V100
+.Trashes
+
+# macOS Files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build logs
+*.log
+
+# User-specific files
+*.swp
+
+*.db

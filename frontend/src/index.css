@@ -1,0 +1,33 @@
+body {
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.page-container {
+  padding: 24px 0;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  transition: transform 0.3s ease;
+}
+
+.chart-container {
+  position: relative;
+  height: 400px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .chart-container {
+    height: 300px;
+  }
+} 

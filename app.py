@@ -40,12 +40,31 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Define database models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    age = db.Column(db.Integer)
+    sex = db.Column(db.String(10))  # 'male', 'female', or 'other'
+    height = db.Column(db.Float)  # height in cm
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'age': self.age,
+            'sex': self.sex,
+            'height': self.height,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     weight = db.Column(db.Float, nullable=False)  # weight in kg
     neck = db.Column(db.Float)  # neck circumference in cm
     belly = db.Column(db.Float)  # belly circumference in cm
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
     # Remove calculated fields from database model
     # calculated_fat_percentage and calculated_muscle_mass are no longer stored
 
@@ -66,7 +85,8 @@ class Entry(db.Model):
             'neck': self.neck,
             'belly': self.belly,
             'fat_percentage': fat_percentage,
-            'muscle_mass': muscle_mass
+            'muscle_mass': muscle_mass,
+            'user_id': self.user_id
         }
 
 class Goal(db.Model):
@@ -76,6 +96,7 @@ class Goal(db.Model):
     target_fat_percentage = db.Column(db.Float)
     target_muscle_mass = db.Column(db.Float)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
 
     def to_dict(self):
         return {
@@ -84,7 +105,8 @@ class Goal(db.Model):
             'target_weight': self.target_weight,
             'target_fat_percentage': self.target_fat_percentage,
             'target_muscle_mass': self.target_muscle_mass,
-            'created_at': self.created_at.strftime('%Y-%m-%d')
+            'created_at': self.created_at.strftime('%Y-%m-%d'),
+            'user_id': self.user_id
         }
 
 # Create database tables
@@ -155,28 +177,40 @@ def get_entries():
 @app.route('/api/entries', methods=['POST'])
 def add_entry():
     try:
-        logger.info("Processing POST request for new entry")
         data = request.json
-        logger.debug(f"Received entry data: {data}")
         
-        # Only store user-entered values, not calculated ones
+        # Validate required fields
+        if not data.get('weight'):
+            return jsonify({'error': 'Weight is required'}), 400
+        
+        # Parse date (if provided) or use current date
+        entry_date = data.get('date')
+        if entry_date:
+            try:
+                entry_date = datetime.strptime(entry_date, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        else:
+            entry_date = datetime.now()
+        
+        # Create new entry
         new_entry = Entry(
-            date=datetime.strptime(data.get('date', datetime.utcnow().strftime('%Y-%m-%d')), '%Y-%m-%d'),
-            weight=data.get('weight'),
-            neck=data.get('neck'),
-            belly=data.get('belly')
-            # No longer storing calculated values
+            date=entry_date,
+            weight=float(data.get('weight')),
+            neck=float(data.get('neck')) if data.get('neck') else None,
+            belly=float(data.get('belly')) if data.get('belly') else None,
+            user_id=data.get('user_id')  # This can be null for backward compatibility
         )
         
         db.session.add(new_entry)
         db.session.commit()
-        logger.info(f"New entry saved successfully with ID: {new_entry.id}")
         
-        # Return the entry with calculated values included
+        # Return the created entry
         return jsonify(new_entry.to_dict()), 201
     except Exception as e:
-        logger.error(f"Error adding entry: {str(e)}")
-        return jsonify({"error": "Failed to add entry"}), 500
+        db.session.rollback()
+        logger.error(f"Error adding entry: {e}")
+        return jsonify({'error': 'Failed to add entry'}), 500
 
 @app.route('/api/entries/<int:entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
@@ -190,6 +224,38 @@ def delete_entry(entry_id):
     except Exception as e:
         logger.error(f"Error deleting entry ID {entry_id}: {str(e)}")
         return jsonify({"error": "Failed to delete entry"}), 500
+
+@app.route('/api/entries/<int:entry_id>', methods=['PUT'])
+def update_entry(entry_id):
+    try:
+        entry = Entry.query.get(entry_id)
+        if not entry:
+            return jsonify({'error': 'Entry not found'}), 404
+            
+        data = request.json
+        
+        # Update entry fields if provided
+        if 'date' in data:
+            try:
+                entry.date = datetime.strptime(data['date'], '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        if 'weight' in data:
+            entry.weight = float(data['weight'])
+        if 'neck' in data:
+            entry.neck = float(data['neck']) if data['neck'] else None
+        if 'belly' in data:
+            entry.belly = float(data['belly']) if data['belly'] else None
+        if 'user_id' in data:
+            entry.user_id = data['user_id']
+            
+        db.session.commit()
+        return jsonify(entry.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating entry: {e}")
+        return jsonify({'error': 'Failed to update entry'}), 500
 
 @app.route('/api/goals', methods=['GET'])
 def get_goals():
@@ -206,38 +272,87 @@ def get_goals():
 @app.route('/api/goals', methods=['POST'])
 def add_goal():
     try:
-        logger.info("Processing POST request for new goal")
         data = request.json
-        logger.debug(f"Received goal data: {data}")
         
+        # Validate required fields (at least one target must be set)
+        if not any([data.get('target_weight'), data.get('target_fat_percentage'), data.get('target_muscle_mass')]):
+            return jsonify({'error': 'At least one target (weight, fat percentage, or muscle mass) is required'}), 400
+        
+        # Parse target date (if provided) or use default date (30 days from now)
+        target_date = data.get('target_date')
+        if target_date:
+            try:
+                target_date = datetime.strptime(target_date, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'error': 'Invalid date format for target_date. Use YYYY-MM-DD'}), 400
+        else:
+            target_date = datetime.now() + timedelta(days=30)
+        
+        # Create new goal
         new_goal = Goal(
-            target_date=datetime.strptime(data.get('target_date'), '%Y-%m-%d'),
-            target_weight=data.get('target_weight'),
-            target_fat_percentage=data.get('target_fat_percentage'),
-            target_muscle_mass=data.get('target_muscle_mass')
+            target_date=target_date,
+            target_weight=float(data.get('target_weight')) if data.get('target_weight') else None,
+            target_fat_percentage=float(data.get('target_fat_percentage')) if data.get('target_fat_percentage') else None,
+            target_muscle_mass=float(data.get('target_muscle_mass')) if data.get('target_muscle_mass') else None,
+            user_id=data.get('user_id')  # This can be null for backward compatibility
         )
         
         db.session.add(new_goal)
         db.session.commit()
-        logger.info(f"New goal saved successfully with ID: {new_goal.id}")
         
+        # Return the created goal
         return jsonify(new_goal.to_dict()), 201
     except Exception as e:
-        logger.error(f"Error adding goal: {str(e)}")
-        return jsonify({"error": "Failed to add goal"}), 500
+        db.session.rollback()
+        logger.error(f"Error adding goal: {e}")
+        return jsonify({'error': 'Failed to add goal'}), 500
 
 @app.route('/api/goals/<int:goal_id>', methods=['DELETE'])
 def delete_goal(goal_id):
     try:
-        logger.info(f"Processing DELETE request for goal ID: {goal_id}")
-        goal = Goal.query.get_or_404(goal_id)
+        goal = Goal.query.get(goal_id)
+        if not goal:
+            return jsonify({'error': 'Goal not found'}), 404
+        
         db.session.delete(goal)
         db.session.commit()
-        logger.info(f"Goal ID {goal_id} deleted successfully")
-        return '', 204
+        return jsonify({'message': 'Goal deleted successfully'})
     except Exception as e:
-        logger.error(f"Error deleting goal ID {goal_id}: {str(e)}")
-        return jsonify({"error": "Failed to delete goal"}), 500
+        db.session.rollback()
+        logger.error(f"Error deleting goal: {e}")
+        return jsonify({'error': 'Failed to delete goal'}), 500
+
+@app.route('/api/goals/<int:goal_id>', methods=['PUT'])
+def update_goal(goal_id):
+    try:
+        goal = Goal.query.get(goal_id)
+        if not goal:
+            return jsonify({'error': 'Goal not found'}), 404
+            
+        data = request.json
+        
+        # Update goal fields if provided
+        if 'target_date' in data:
+            try:
+                goal.target_date = datetime.strptime(data['target_date'], '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'error': 'Invalid date format for target_date. Use YYYY-MM-DD'}), 400
+        
+        if 'target_weight' in data:
+            goal.target_weight = float(data['target_weight']) if data['target_weight'] else None
+        if 'target_fat_percentage' in data:
+            goal.target_fat_percentage = float(data['target_fat_percentage']) if data['target_fat_percentage'] else None
+        if 'target_muscle_mass' in data:
+            goal.target_muscle_mass = float(data['target_muscle_mass']) if data['target_muscle_mass'] else None
+        if 'user_id' in data:
+            goal.user_id = data['user_id']
+            
+        db.session.commit()
+        return jsonify(goal.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating goal: {e}")
+        return jsonify({'error': 'Failed to update goal'}), 500
 
 @app.route('/api/progress', methods=['GET'])
 def get_progress():
@@ -334,6 +449,178 @@ def server_status():
     except Exception as e:
         logger.error(f"Error retrieving server status: {str(e)}")
         return jsonify({"error": "Failed to retrieve server status"}), 500
+
+# User API endpoints
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    try:
+        users = User.query.order_by(User.name).all()
+        return jsonify([user.to_dict() for user in users])
+    except Exception as e:
+        logger.error(f"Error fetching users: {e}")
+        return jsonify({'error': 'Failed to fetch users'}), 500
+
+@app.route('/api/users', methods=['POST'])
+def add_user():
+    try:
+        data = request.json
+        
+        # Validate required fields
+        if not data.get('name'):
+            return jsonify({'error': 'Name is required'}), 400
+        
+        # Create new user
+        new_user = User(
+            name=data.get('name'),
+            age=data.get('age'),
+            sex=data.get('sex'),
+            height=data.get('height')
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify(new_user.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding user: {e}")
+        return jsonify({'error': 'Failed to add user'}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify(user.to_dict())
+    except Exception as e:
+        logger.error(f"Error fetching user: {e}")
+        return jsonify({'error': 'Failed to fetch user'}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+            
+        data = request.json
+        
+        # Update user fields if provided
+        if 'name' in data:
+            user.name = data['name']
+        if 'age' in data:
+            user.age = data['age']
+        if 'sex' in data:
+            user.sex = data['sex']
+        if 'height' in data:
+            user.height = data['height']
+            
+        db.session.commit()
+        return jsonify(user.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating user: {e}")
+        return jsonify({'error': 'Failed to update user'}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Delete user's entries and goals
+        Entry.query.filter_by(user_id=user_id).delete()
+        Goal.query.filter_by(user_id=user_id).delete()
+        
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'User and associated data deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting user: {e}")
+        return jsonify({'error': 'Failed to delete user'}), 500
+
+# Modified endpoints to support user filtering
+@app.route('/api/entries/user/<int:user_id>', methods=['GET'])
+def get_user_entries(user_id):
+    try:
+        entries = Entry.query.filter_by(user_id=user_id).order_by(Entry.date.desc()).all()
+        return jsonify([entry.to_dict() for entry in entries])
+    except Exception as e:
+        logger.error(f"Error fetching entries for user {user_id}: {e}")
+        return jsonify({'error': 'Failed to fetch entries'}), 500
+
+@app.route('/api/goals/user/<int:user_id>', methods=['GET'])
+def get_user_goals(user_id):
+    try:
+        goals = Goal.query.filter_by(user_id=user_id).order_by(Goal.target_date.desc()).all()
+        return jsonify([goal.to_dict() for goal in goals])
+    except Exception as e:
+        logger.error(f"Error fetching goals for user {user_id}: {e}")
+        return jsonify({'error': 'Failed to fetch goals'}), 500
+
+@app.route('/api/progress/user/<int:user_id>', methods=['GET'])
+def get_user_progress(user_id):
+    try:
+        logger.info(f"Processing GET request for progress for user {user_id}")
+        # Get the latest entry and goals for this user
+        latest_entry = Entry.query.filter_by(user_id=user_id).order_by(Entry.date.desc()).first()
+        goals = Goal.query.filter_by(user_id=user_id).order_by(Goal.target_date).all()
+        
+        if not latest_entry or not goals:
+            logger.warning(f"Cannot calculate progress for user {user_id}: missing entries or goals")
+            return jsonify([])
+        
+        # Convert latest entry to dict to get calculated values
+        latest_entry_dict = latest_entry.to_dict()
+        latest_fat_percentage = latest_entry_dict.get('fat_percentage')
+        latest_muscle_mass = latest_entry_dict.get('muscle_mass')
+        
+        results = []
+        
+        for goal in goals:
+            # Calculate days between latest entry and goal
+            days_remaining = (goal.target_date - latest_entry.date).days
+            
+            if days_remaining <= 0:
+                # Goal date has passed
+                logger.debug(f"Skipping goal ID {goal.id} as target date has passed")
+                continue
+            
+            result = {
+                'goal_id': goal.id,
+                'target_date': goal.target_date.strftime('%Y-%m-%d'),
+                'days_remaining': days_remaining,
+                'weight': {
+                    'current': latest_entry.weight,
+                    'target': goal.target_weight,
+                    'daily_change_needed': (goal.target_weight - latest_entry.weight) / days_remaining if goal.target_weight else None,
+                    'weekly_change_needed': (goal.target_weight - latest_entry.weight) / (days_remaining / 7) if goal.target_weight else None
+                },
+                'fat_percentage': {
+                    'current': latest_fat_percentage,
+                    'target': goal.target_fat_percentage,
+                    'daily_change_needed': (goal.target_fat_percentage - latest_fat_percentage) / days_remaining if goal.target_fat_percentage and latest_fat_percentage else None,
+                    'weekly_change_needed': (goal.target_fat_percentage - latest_fat_percentage) / (days_remaining / 7) if goal.target_fat_percentage and latest_fat_percentage else None
+                },
+                'muscle_mass': {
+                    'current': latest_muscle_mass,
+                    'target': goal.target_muscle_mass,
+                    'daily_change_needed': (goal.target_muscle_mass - latest_muscle_mass) / days_remaining if goal.target_muscle_mass and latest_muscle_mass else None,
+                    'weekly_change_needed': (goal.target_muscle_mass - latest_muscle_mass) / (days_remaining / 7) if goal.target_muscle_mass and latest_muscle_mass else None
+                }
+            }
+            
+            results.append(result)
+        
+        logger.debug(f"Calculated progress for {len(results)} goals for user {user_id}")
+        return jsonify(results)
+    except Exception as e:
+        logger.error(f"Error calculating progress for user {user_id}: {str(e)}")
+        return jsonify({"error": "Failed to calculate progress"}), 500
 
 # Run the app
 if __name__ == '__main__':

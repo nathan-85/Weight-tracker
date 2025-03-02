@@ -11,66 +11,63 @@ import {
   Snackbar,
   CircularProgress,
   InputAdornment,
-  Tooltip,
+  Slider,
   IconButton,
-  Paper,
+  Tooltip,
   Chip,
   Avatar
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { addEntry, getEntries } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { getEntries, updateEntry } from '../services/api';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useUserContext } from '../contexts/UserContext';
 import { format } from 'date-fns';
 import { 
-  Info as InfoIcon,
-  Help as HelpIcon,
-  Person as PersonIcon
+  Save as SaveIcon,
+  ArrowBack as ArrowBackIcon,
+  Help as HelpIcon
 } from '@mui/icons-material';
 
-const NewEntry = () => {
+const EditEntry = () => {
   const navigate = useNavigate();
+  const { entryId } = useParams();
   const { currentUser } = useUserContext();
   const [date, setDate] = useState(new Date());
   const [weight, setWeight] = useState('');
   const [neck, setNeck] = useState('');
   const [belly, setBelly] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [lastNeckMeasurement, setLastNeckMeasurement] = useState(null);
-  
-  // Fetch the user's most recent entry to get the neck measurement
+
   useEffect(() => {
-    const fetchLastEntry = async () => {
-      if (!currentUser) return;
-      
+    const fetchEntry = async () => {
       try {
-        // Use getEntries instead of getUserEntries and filter by user_id
+        setFetchLoading(true);
         const entries = await getEntries();
-        const userEntries = entries.filter(entry => entry.user_id === currentUser.id);
+        const entry = entries.find(e => e.id === parseInt(entryId));
         
-        if (userEntries && userEntries.length > 0) {
-          // Sort entries by date (newest first)
-          const sortedEntries = userEntries.sort((a, b) => 
-            new Date(b.date) - new Date(a.date)
-          );
-          
-          // Get the most recent entry with a neck measurement
-          const lastEntryWithNeck = sortedEntries.find(entry => entry.neck);
-          
-          if (lastEntryWithNeck && lastEntryWithNeck.neck) {
-            setLastNeckMeasurement(lastEntryWithNeck.neck);
-            setNeck(lastEntryWithNeck.neck.toString());
-          }
+        if (!entry) {
+          setError('Entry not found');
+          return;
         }
+        
+        // Set form values
+        setDate(new Date(entry.date));
+        setWeight(entry.weight.toString());
+        setNeck(entry.neck ? entry.neck.toString() : '');
+        setBelly(entry.belly ? entry.belly.toString() : '');
       } catch (err) {
-        console.error("Failed to fetch last entry:", err);
+        setError('Failed to load entry data');
+        console.error(err);
+      } finally {
+        setFetchLoading(false);
       }
     };
     
-    fetchLastEntry();
-  }, [currentUser]);
+    fetchEntry();
+  }, [entryId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,14 +89,8 @@ const NewEntry = () => {
         user_id: currentUser ? currentUser.id : null
       };
       
-      await addEntry(entryData);
+      await updateEntry(entryId, entryData);
       setSuccess(true);
-      
-      // Reset form
-      setWeight('');
-      setNeck('');
-      setBelly('');
-      setDate(new Date());
       
       // Redirect to dashboard after a short delay
       setTimeout(() => {
@@ -107,7 +98,7 @@ const NewEntry = () => {
       }, 1500);
       
     } catch (err) {
-      setError('Failed to add entry. Please try again.');
+      setError('Failed to update entry. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -116,6 +107,18 @@ const NewEntry = () => {
 
   const handleCloseSnackbar = () => {
     setSuccess(false);
+  };
+  
+  const handleWeightSliderChange = (event, newValue) => {
+    setWeight(newValue.toString());
+  };
+  
+  const handleNeckSliderChange = (event, newValue) => {
+    setNeck(newValue.toString());
+  };
+  
+  const handleBellySliderChange = (event, newValue) => {
+    setBelly(newValue.toString());
   };
   
   const formatAustralianDate = (date) => {
@@ -127,17 +130,31 @@ const NewEntry = () => {
     return name.split(' ').map(part => part[0]).join('').toUpperCase();
   };
 
+  if (fetchLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <IconButton 
+          onClick={() => navigate('/')}
+          sx={{ mr: 2 }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
         <Typography variant="h4" component="h1" gutterBottom>
-          Add New Entry
+          Edit Entry
         </Typography>
         
         {currentUser && (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
             <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-              Adding entry for:
+              Editing entry for:
             </Typography>
             <Chip
               avatar={
@@ -196,6 +213,16 @@ const NewEntry = () => {
                     max: 300,
                   }}
                 />
+                <Slider
+                  value={weight ? parseFloat(weight) : 0}
+                  onChange={handleWeightSliderChange}
+                  min={40}
+                  max={150}
+                  step={0.1}
+                  sx={{ mt: 2 }}
+                  valueLabelDisplay="auto"
+                  disabled={!weight}
+                />
               </Grid>
               
               <Grid item xs={12} md={4}>
@@ -213,7 +240,17 @@ const NewEntry = () => {
                     min: 20,
                     max: 100,
                   }}
-                  helperText={lastNeckMeasurement ? `Auto-filled from last entry (${lastNeckMeasurement} cm)` : "Used for body fat calculation"}
+                  helperText="Used for body fat calculation"
+                />
+                <Slider
+                  value={neck ? parseFloat(neck) : 0}
+                  onChange={handleNeckSliderChange}
+                  min={20}
+                  max={60}
+                  step={0.1}
+                  sx={{ mt: 2 }}
+                  valueLabelDisplay="auto"
+                  disabled={!neck}
                 />
               </Grid>
               
@@ -234,18 +271,35 @@ const NewEntry = () => {
                   }}
                   helperText="Measured at navel level"
                 />
+                <Slider
+                  value={belly ? parseFloat(belly) : 0}
+                  onChange={handleBellySliderChange}
+                  min={60}
+                  max={150}
+                  step={0.1}
+                  sx={{ mt: 2 }}
+                  valueLabelDisplay="auto"
+                  disabled={!belly}
+                />
               </Grid>
               
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                   <Button
+                    variant="outlined"
+                    onClick={() => navigate('/')}
+                    sx={{ mr: 2 }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
                     type="submit"
                     variant="contained"
                     color="primary"
                     disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} /> : null}
+                    startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                   >
-                    {loading ? 'Saving...' : 'Save Entry'}
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </Box>
               </Grid>
@@ -254,71 +308,6 @@ const NewEntry = () => {
         </CardContent>
       </Card>
       
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          How to Measure
-        </Typography>
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Weight
-                </Typography>
-                <Typography variant="body2">
-                  • Weigh yourself in the morning before eating or drinking
-                  <br />
-                  • Use the same scale each time
-                  <br />
-                  • Wear minimal clothing or none at all
-                  <br />
-                  • Stand still with weight evenly distributed
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Neck Circumference
-                </Typography>
-                <Typography variant="body2">
-                  • Use a flexible measuring tape
-                  <br />
-                  • Measure around the middle of your neck
-                  <br />
-                  • Keep the tape horizontal and snug but not tight
-                  <br />
-                  • For men, measure below the Adam's apple
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Belly Circumference
-                </Typography>
-                <Typography variant="body2">
-                  • Measure at the level of your navel
-                  <br />
-                  • Stand relaxed, not sucking in or pushing out
-                  <br />
-                  • Keep the tape horizontal all the way around
-                  <br />
-                  • Measure at the end of a normal exhale
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
-      
       <Snackbar
         open={success}
         autoHideDuration={3000}
@@ -326,11 +315,11 @@ const NewEntry = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert onClose={handleCloseSnackbar} severity="success">
-          Entry added successfully!
+          Entry updated successfully!
         </Alert>
       </Snackbar>
     </Box>
   );
 };
 
-export default NewEntry; 
+export default EditEntry; 

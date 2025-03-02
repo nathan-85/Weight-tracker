@@ -15,9 +15,21 @@ import {
   TableRow,
   IconButton,
   Tooltip,
-  Alert
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Chip,
+  Avatar
 } from '@mui/material';
-import { Delete as DeleteIcon } from '@mui/icons-material';
+import { 
+  Delete as DeleteIcon, 
+  Edit as EditIcon,
+  Person as PersonIcon
+} from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Line } from 'react-chartjs-2';
 import {
@@ -30,7 +42,8 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from 'chart.js';
-
+import { useNavigate } from 'react-router-dom';
+import { useUserContext } from '../contexts/UserContext';
 import { getEntries, deleteEntry } from '../services/api';
 
 // Register ChartJS components
@@ -45,36 +58,64 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { currentUser } = useUserContext();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [entryToEdit, setEntryToEdit] = useState(null);
 
   useEffect(() => {
     fetchEntries();
-  }, []);
+  }, [currentUser]);
 
   const fetchEntries = async () => {
     try {
       setLoading(true);
-      const data = await getEntries();
+      const data = await getEntries(currentUser?.id);
       setEntries(data);
-      setError(null);
     } catch (err) {
-      setError('Failed to load entries. Please try again later.');
+      setError('Failed to load entries');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteEntry = async (id) => {
+  const handleDeleteClick = (entry) => {
+    setEntryToDelete(entry);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setEntryToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete) return;
+    
     try {
-      await deleteEntry(id);
-      setEntries(entries.filter(entry => entry.id !== id));
+      await deleteEntry(entryToDelete.id);
+      setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
+      setDeleteDialogOpen(false);
+      setEntryToDelete(null);
     } catch (err) {
-      setError('Failed to delete entry. Please try again.');
+      setError('Failed to delete entry');
       console.error(err);
     }
+  };
+
+  const handleEditClick = (entry) => {
+    navigate(`/edit-entry/${entry.id}`);
+  };
+
+  const formatAustralianDate = (dateString) => {
+    const date = new Date(dateString);
+    return format(date, 'dd/MM/yyyy');
   };
 
   // Prepare chart data
@@ -119,6 +160,7 @@ const Dashboard = () => {
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     interaction: {
       mode: 'index',
       intersect: false,
@@ -236,7 +278,7 @@ const Dashboard = () => {
                     {stats.changes.weight > 0 ? "+" : ""}{stats.changes.weight.toFixed(1)} kg
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    since {format(new Date(stats.comparisonDate), 'MMM d, yyyy')}
+                    since {formatAustralianDate(stats.comparisonDate)}
                   </Typography>
                 </CardContent>
               </Card>
@@ -256,7 +298,7 @@ const Dashboard = () => {
                         {stats.changes.fat > 0 ? "+" : ""}{stats.changes.fat.toFixed(1)}%
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        since {format(new Date(stats.comparisonDate), 'MMM d, yyyy')}
+                        since {formatAustralianDate(stats.comparisonDate)}
                       </Typography>
                     </>
                   )}
@@ -274,11 +316,11 @@ const Dashboard = () => {
                   </Typography>
                   {stats.current.muscle && (
                     <>
-                      <Typography color={stats.changes.muscle > 0 ? "success.main" : "error.main"}>
+                      <Typography color={stats.changes.muscle < 0 ? "error.main" : "success.main"}>
                         {stats.changes.muscle > 0 ? "+" : ""}{stats.changes.muscle.toFixed(1)} kg
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        since {format(new Date(stats.comparisonDate), 'MMM d, yyyy')}
+                        since {formatAustralianDate(stats.comparisonDate)}
                       </Typography>
                     </>
                   )}
@@ -288,9 +330,9 @@ const Dashboard = () => {
           </Grid>
 
           {/* Chart */}
-          <Card sx={{ mb: 4 }}>
-            <CardContent>
-              <Box sx={{ height: 400 }}>
+          <Card sx={{ mb: 4, width: '100%' }}>
+            <CardContent sx={{ padding: 2, '&:last-child': { paddingBottom: 2 } }}>
+              <Box sx={{ height: 400, width: '100%' }}>
                 <Line options={chartOptions} data={chartData} />
               </Box>
             </CardContent>
@@ -318,17 +360,27 @@ const Dashboard = () => {
                   .map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell component="th" scope="row">
-                        {format(new Date(entry.date), 'MMM d, yyyy')}
+                        {formatAustralianDate(entry.date)}
                       </TableCell>
                       <TableCell align="right">{entry.weight}</TableCell>
                       <TableCell align="right">{entry.fat_percentage?.toFixed(1) || 'N/A'}</TableCell>
                       <TableCell align="right">{entry.muscle_mass?.toFixed(1) || 'N/A'}</TableCell>
                       <TableCell align="right">
+                        <Tooltip title="Edit">
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => handleEditClick(entry)}
+                            sx={{ mr: 1 }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Delete">
                           <IconButton 
                             size="small" 
                             color="error"
-                            onClick={() => handleDeleteEntry(entry.id)}
+                            onClick={() => handleDeleteClick(entry)}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -341,6 +393,27 @@ const Dashboard = () => {
           </TableContainer>
         </>
       )}
+
+      {/* Delete Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Delete Entry"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this entry?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

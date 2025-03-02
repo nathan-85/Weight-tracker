@@ -17,7 +17,12 @@ import {
   Menu,
   MenuItem,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Select,
+  FormControl,
+  InputLabel,
+  Avatar,
+  Tooltip
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -25,14 +30,19 @@ import {
   AddCircleOutline as AddIcon,
   Flag as FlagIcon,
   ShowChart as ChartIcon,
-  BugReport as DebugIcon
+  BugReport as DebugIcon,
+  Person as PersonIcon,
+  Add as AddPersonIcon
 } from '@mui/icons-material';
+import { useUserContext } from '../contexts/UserContext';
+import { format } from 'date-fns';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
   { name: 'New Entry', path: '/new-entry', icon: <AddIcon /> },
   { name: 'Goals', path: '/goals', icon: <FlagIcon /> },
   { name: 'Progress', path: '/progress', icon: <ChartIcon /> },
+  { name: 'Profile', path: '/profile', icon: <PersonIcon /> },
 ];
 
 const Header = () => {
@@ -44,6 +54,8 @@ const Header = () => {
   const [debugMenuOpen, setDebugMenuOpen] = useState(false);
   const [debugAnchorEl, setDebugAnchorEl] = useState(null);
   const [showDebugMode, setShowDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
+  const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
+  const { users, currentUser, switchUser, loading: usersLoading } = useUserContext();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -70,6 +82,19 @@ const Header = () => {
     const newValue = !showDebugMode;
     setShowDebugMode(newValue);
     localStorage.setItem('debugMode', newValue);
+  };
+
+  const handleUserMenuOpen = (event) => {
+    setUserMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchorEl(null);
+  };
+
+  const handleUserSwitch = (userId) => {
+    switchUser(userId);
+    handleUserMenuClose();
   };
 
   const drawer = (
@@ -105,10 +130,21 @@ const Header = () => {
     { text: 'New Entry', icon: <AddIcon />, path: '/new-entry' },
     { text: 'Goals', icon: <FlagIcon />, path: '/goals' },
     { text: 'Progress', icon: <ChartIcon />, path: '/progress' },
+    { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
   ];
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const formatAustralianDate = (date) => {
+    if (!date) return '';
+    return format(new Date(date), 'dd/MM/yyyy');
+  };
+
+  const getUserInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(part => part[0]).join('').toUpperCase();
   };
 
   return (
@@ -129,10 +165,89 @@ const Header = () => {
           <Typography
             variant="h6"
             component="div"
-            sx={{ flexGrow: 1, fontWeight: 600 }}
+            sx={{ flexGrow: 0, fontWeight: 600, mr: 2 }}
           >
             Weight Tracker
           </Typography>
+          
+          {/* User selector */}
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 'auto' }}>
+            {currentUser && (
+              <Tooltip title="Click to change user or manage profile">
+                <Button 
+                  onClick={handleUserMenuOpen}
+                  startIcon={
+                    <Avatar 
+                      sx={{ 
+                        width: 30, 
+                        height: 30, 
+                        bgcolor: 'primary.main',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {getUserInitials(currentUser.name)}
+                    </Avatar>
+                  }
+                  sx={{ 
+                    textTransform: 'none', 
+                    fontWeight: 500,
+                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
+                  }}
+                >
+                  {currentUser.name}
+                </Button>
+              </Tooltip>
+            )}
+            
+            <Menu
+              anchorEl={userMenuAnchorEl}
+              open={Boolean(userMenuAnchorEl)}
+              onClose={handleUserMenuClose}
+            >
+              {users.map(user => (
+                <MenuItem 
+                  key={user.id} 
+                  onClick={() => handleUserSwitch(user.id)}
+                  selected={currentUser && currentUser.id === user.id}
+                >
+                  <Avatar 
+                    sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      mr: 1, 
+                      fontSize: '0.75rem',
+                      bgcolor: currentUser && currentUser.id === user.id ? 'primary.main' : 'grey.400'
+                    }}
+                  >
+                    {getUserInitials(user.name)}
+                  </Avatar>
+                  {user.name}
+                </MenuItem>
+              ))}
+              <MenuItem 
+                component={RouterLink} 
+                to="/profile" 
+                onClick={handleUserMenuClose}
+                divider
+              >
+                <ListItemIcon>
+                  <PersonIcon fontSize="small" />
+                </ListItemIcon>
+                Manage Profiles
+              </MenuItem>
+              <MenuItem 
+                component={RouterLink} 
+                to="/profile/new" 
+                onClick={handleUserMenuClose}
+              >
+                <ListItemIcon>
+                  <AddPersonIcon fontSize="small" />
+                </ListItemIcon>
+                Add New Profile
+              </MenuItem>
+            </Menu>
+          </Box>
+          
           {!isMobile && (
             <Box sx={{ display: 'flex' }}>
               {menuItems.map((item) => (

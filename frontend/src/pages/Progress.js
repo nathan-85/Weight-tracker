@@ -13,7 +13,11 @@ import {
   List,
   ListItem,
   ListItemText,
-  Chip
+  Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { format, differenceInDays } from 'date-fns';
 import { Line } from 'react-chartjs-2';
@@ -27,8 +31,8 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from 'chart.js';
-
 import { getEntries, getGoals, getProgress } from '../services/api';
+import { useUserContext } from '../contexts/UserContext';
 
 // Register ChartJS components
 ChartJS.register(
@@ -41,32 +45,50 @@ ChartJS.register(
   Legend
 );
 
+// Format date in Australian format (dd/MM/yyyy)
+const formatAustralianDate = (dateString) => {
+  const date = new Date(dateString);
+  return format(date, 'dd/MM/yyyy');
+};
+
 const Progress = () => {
+  const { currentUser } = useUserContext();
   const [entries, setEntries] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [progress, setProgress] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [selectedGoal, setSelectedGoal] = useState('');
+  const [selectedProgress, setSelectedProgress] = useState(null);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (goals.length > 0 && !selectedGoal) {
-      setSelectedGoal(goals[0].id);
+      // Default to the most recent goal
+      const sortedGoals = [...goals].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setSelectedGoal(sortedGoals[0].id);
     }
   }, [goals]);
 
+  useEffect(() => {
+    if (progress && selectedGoal) {
+      setSelectedProgress(progress.find(p => p.goal_id === selectedGoal));
+    } else {
+      setSelectedProgress(null);
+    }
+  }, [progress, selectedGoal]);
+
   const fetchData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const [entriesData, goalsData, progressData] = await Promise.all([
-        getEntries(),
-        getGoals(),
-        getProgress()
+        getEntries(currentUser?.id),
+        getGoals(currentUser?.id),
+        getProgress(currentUser?.id)
       ]);
       
       setEntries(entriesData);
@@ -121,12 +143,12 @@ const Progress = () => {
     const requiredProgressData = [];
     
     // Add the latest entry as the starting point
-    labels.push(format(new Date(latestEntry.date), 'MMM d'));
+    labels.push(format(new Date(latestEntry.date), 'dd/MM'));
     actualData.push(currentValue);
     requiredProgressData.push(currentValue);
     
     // Add the goal date as the end point
-    labels.push(format(new Date(goal.target_date), 'MMM d'));
+    labels.push(format(new Date(goal.target_date), 'dd/MM'));
     actualData.push(null); // We don't have actual data for the future
     requiredProgressData.push(targetValue);
     
@@ -151,38 +173,45 @@ const Progress = () => {
     };
   };
 
-  const chartOptions = (title, yAxisLabel) => ({
-    responsive: true,
-    plugins: {
-      title: {
-        display: true,
-        text: title,
+  const chartOptions = (title, unit) => {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: title,
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                label += context.parsed.y.toFixed(1) + ' ' + unit;
+              }
+              return label;
+            }
+          }
+        }
       },
-      tooltip: {
-        callbacks: {
-          label: function(context) {
-            return `${context.dataset.label}: ${context.parsed.y}${yAxisLabel}`;
+      scales: {
+        y: {
+          title: {
+            display: true,
+            text: unit,
           }
         }
       }
-    },
-    scales: {
-      y: {
-        title: {
-          display: true,
-          text: yAxisLabel,
-        },
-      },
-    },
-  });
-
-  // Get the selected goal's progress data
-  const getSelectedGoalProgress = () => {
-    if (!progress.length || !selectedGoal) return null;
-    return progress.find(p => p.goal_id === selectedGoal);
+    };
   };
 
-  const selectedProgress = getSelectedGoalProgress();
+  const getSelectedGoalProgress = () => {
+    if (!progress || !selectedGoal) return null;
+    return progress.find(p => p.goal_id === selectedGoal);
+  };
 
   if (loading) {
     return (
@@ -192,60 +221,36 @@ const Progress = () => {
     );
   }
 
-  if (entries.length === 0 || goals.length === 0) {
-    return (
-      <Box>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Progress Tracking
-        </Typography>
-        <Alert severity="info">
-          You need at least one entry and one goal to track progress. Please add them first.
-        </Alert>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Progress Tracking
-        </Typography>
-        <Alert severity="error">
-          {error}
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
         Progress Tracking
       </Typography>
       
-      {/* Goal Selector */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Select Goal
-          </Typography>
-          <Grid container spacing={2}>
-            {goals
-              .sort((a, b) => new Date(a.target_date) - new Date(b.target_date))
-              .map((goal) => (
-                <Grid item key={goal.id}>
-                  <Chip
-                    label={`Goal for ${format(new Date(goal.target_date), 'MMM d, yyyy')}`}
-                    onClick={() => setSelectedGoal(goal.id)}
-                    color={selectedGoal === goal.id ? "primary" : "default"}
-                    variant={selectedGoal === goal.id ? "filled" : "outlined"}
-                  />
-                </Grid>
-              ))}
-          </Grid>
-        </CardContent>
-      </Card>
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      
+      {goals.length === 0 ? (
+        <Alert severity="info">
+          You need to create a goal before you can track progress.
+        </Alert>
+      ) : (
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel id="goal-select-label">Select Goal</InputLabel>
+          <Select
+            labelId="goal-select-label"
+            id="goal-select"
+            value={selectedGoal}
+            label="Select Goal"
+            onChange={(e) => setSelectedGoal(e.target.value)}
+          >
+            {goals.map((goal) => (
+              <MenuItem key={goal.id} value={goal.id}>
+                {goal.name} - Target: {formatAustralianDate(goal.target_date)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
       
       {selectedProgress ? (
         <>
@@ -256,7 +261,7 @@ const Progress = () => {
                 Progress Summary
               </Typography>
               <Typography variant="body1" gutterBottom>
-                Target Date: {format(new Date(selectedProgress.target_date), 'MMMM d, yyyy')}
+                Target Date: {formatAustralianDate(selectedProgress.target_date)}
               </Typography>
               <Typography variant="body1" gutterBottom>
                 Days Remaining: {selectedProgress.days_remaining}
@@ -276,11 +281,10 @@ const Progress = () => {
                           </Typography>
                           <br />
                           <Typography component="span" variant="body2">
-                            You need to {selectedProgress.weight.daily_change_needed > 0 ? 'gain' : 'lose'} {Math.abs(selectedProgress.weight.daily_change_needed).toFixed(2)} kg per day
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            That's {Math.abs(selectedProgress.weight.weekly_change_needed).toFixed(2)} kg per week
+                            {selectedProgress.weight.daily_change_needed !== 0 ? 
+                              `You need to ${selectedProgress.weight.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.weight.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.weight.weekly_change_needed).toFixed(2)} kg per week)` :
+                              'You are already at your target weight!'
+                            }
                           </Typography>
                         </>
                       }
@@ -299,11 +303,10 @@ const Progress = () => {
                           </Typography>
                           <br />
                           <Typography component="span" variant="body2">
-                            You need to {selectedProgress.fat_percentage.daily_change_needed > 0 ? 'gain' : 'lose'} {Math.abs(selectedProgress.fat_percentage.daily_change_needed).toFixed(2)}% per day
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            That's {Math.abs(selectedProgress.fat_percentage.weekly_change_needed).toFixed(2)}% per week
+                            {selectedProgress.fat_percentage.daily_change_needed !== 0 ? 
+                              `You need to ${selectedProgress.fat_percentage.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.fat_percentage.daily_change_needed).toFixed(2)}% per day (${Math.abs(selectedProgress.fat_percentage.weekly_change_needed).toFixed(2)}% per week)` :
+                              'You are already at your target body fat percentage!'
+                            }
                           </Typography>
                         </>
                       }
@@ -322,11 +325,10 @@ const Progress = () => {
                           </Typography>
                           <br />
                           <Typography component="span" variant="body2">
-                            You need to {selectedProgress.muscle_mass.daily_change_needed > 0 ? 'gain' : 'lose'} {Math.abs(selectedProgress.muscle_mass.daily_change_needed).toFixed(2)} kg per day
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            That's {Math.abs(selectedProgress.muscle_mass.weekly_change_needed).toFixed(2)} kg per week
+                            {selectedProgress.muscle_mass.daily_change_needed !== 0 ? 
+                              `You need to ${selectedProgress.muscle_mass.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.muscle_mass.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.muscle_mass.weekly_change_needed).toFixed(2)} kg per week)` :
+                              'You are already at your target muscle mass!'
+                            }
                           </Typography>
                         </>
                       }

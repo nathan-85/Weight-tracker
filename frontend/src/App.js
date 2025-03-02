@@ -17,11 +17,14 @@ import EditProfile from './pages/EditProfile';
 import EditEntry from './pages/EditEntry';
 
 function App() {
+  // Check if debug mode is enabled in localStorage
+  const [isDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Router>
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Header />
+          <Header isDebugMode={isDebugMode} />
           <Container component="main" sx={{ flexGrow: 1, py: 3, px: { xs: 2, sm: 3, md: 4 }, maxWidth: '100% !important' }}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -29,7 +32,7 @@ function App() {
               <Route path="/edit-entry/:entryId" element={<EditEntry />} />
               <Route path="/goals" element={<Goals />} />
               <Route path="/progress" element={<Progress />} />
-              <Route path="/debug" element={<Debug />} />
+              {isDebugMode && <Route path="/debug" element={<Debug />} />}
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/new" element={<NewProfile />} />
               <Route path="/profile/edit/:userId" element={<EditProfile />} />

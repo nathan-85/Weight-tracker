@@ -14,7 +14,6 @@ import {
   Alert,
   Snackbar,
   Paper,
-  Slider,
   InputAdornment,
   IconButton,
   Tooltip
@@ -81,16 +80,8 @@ const NewProfile = () => {
     setSuccess(false);
   };
 
-  const handleHeightSliderChange = (event, newValue) => {
-    setHeight(newValue.toString());
-  };
-
   const handleHeightInputChange = (event) => {
     setHeight(event.target.value === '' ? '' : event.target.value);
-  };
-
-  const handleAgeSliderChange = (event, newValue) => {
-    setAge(newValue.toString());
   };
 
   const handleAgeInputChange = (event) => {
@@ -171,14 +162,6 @@ const NewProfile = () => {
                   </IconButton>
                 </Tooltip>
               </Box>
-              <Slider
-                value={age ? parseInt(age) : 0}
-                onChange={handleAgeSliderChange}
-                min={0}
-                max={120}
-                sx={{ mt: 2 }}
-                disabled={age === ''}
-              />
             </Grid>
             
             <Grid item xs={12}>
@@ -201,14 +184,6 @@ const NewProfile = () => {
                   </IconButton>
                 </Tooltip>
               </Box>
-              <Slider
-                value={height ? parseFloat(height) : 0}
-                onChange={handleHeightSliderChange}
-                min={0}
-                max={250}
-                sx={{ mt: 2 }}
-                disabled={height === ''}
-              />
             </Grid>
             
             <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>

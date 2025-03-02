@@ -45,7 +45,7 @@ const navItems = [
   { name: 'Profile', path: '/profile', icon: <PersonIcon /> },
 ];
 
-const Header = () => {
+const Header = ({ isDebugMode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const theme = useTheme();
@@ -82,6 +82,7 @@ const Header = () => {
     const newValue = !showDebugMode;
     setShowDebugMode(newValue);
     localStorage.setItem('debugMode', newValue);
+    window.location.reload();
   };
 
   const handleUserMenuOpen = (event) => {
@@ -276,39 +277,43 @@ const Header = () => {
               ))}
             </Box>
           )}
-          <IconButton
-            color="inherit"
-            aria-label="debug"
-            onClick={handleDebugMenuOpen}
-          >
-            <DebugIcon />
-          </IconButton>
-          <Menu
-            anchorEl={debugAnchorEl}
-            open={debugMenuOpen}
-            onClose={handleDebugMenuClose}
-          >
-            <MenuItem>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={showDebugMode}
-                    onChange={toggleDebugMode}
-                    name="debugMode"
-                    color="primary"
-                  />
-                }
-                label="Debug Mode"
-              />
-            </MenuItem>
-            <MenuItem
-              component={RouterLink}
-              to="/debug"
-              onClick={handleDebugMenuClose}
+          {isDebugMode && (
+            <IconButton
+              color="inherit"
+              aria-label="debug"
+              onClick={handleDebugMenuOpen}
             >
-              Debug Panel
-            </MenuItem>
-          </Menu>
+              <DebugIcon />
+            </IconButton>
+          )}
+          {isDebugMode && (
+            <Menu
+              anchorEl={debugAnchorEl}
+              open={debugMenuOpen}
+              onClose={handleDebugMenuClose}
+            >
+              <MenuItem>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showDebugMode}
+                      onChange={toggleDebugMode}
+                      name="debugMode"
+                      color="primary"
+                    />
+                  }
+                  label="Debug Mode"
+                />
+              </MenuItem>
+              <MenuItem
+                component={RouterLink}
+                to="/debug"
+                onClick={handleDebugMenuClose}
+              >
+                Debug Panel
+              </MenuItem>
+            </Menu>
+          )}
         </Toolbar>
       </AppBar>
       <Drawer

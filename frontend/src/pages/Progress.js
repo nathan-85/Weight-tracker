@@ -67,12 +67,24 @@ const Progress = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    if (goals.length > 0 && !selectedGoal) {
-      // Default to the most recent goal
-      const sortedGoals = [...goals].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setSelectedGoal(sortedGoals[0].id);
+    if (goals.length > 0) {
+      // Reset selectedGoal whenever goals change or user changes
+      // Find the goal with target_date closest to the current date
+      const today = new Date();
+      const goalWithClosestDate = [...goals].sort((a, b) => {
+        const dateA = new Date(a.target_date);
+        const dateB = new Date(b.target_date);
+        // Calculate absolute difference in days from today
+        const diffA = Math.abs(dateA - today);
+        const diffB = Math.abs(dateB - today);
+        return diffA - diffB; // Sort by closest date to today
+      })[0];
+      
+      setSelectedGoal(goalWithClosestDate.id);
+    } else {
+      setSelectedGoal('');
     }
-  }, [goals]);
+  }, [goals, currentUser?.id]);
 
   useEffect(() => {
     if (progress && selectedGoal) {
@@ -269,73 +281,70 @@ const Progress = () => {
               
               <Divider sx={{ my: 2 }} />
               
-              <List>
+              <Grid container spacing={2}>
                 {selectedProgress.weight.target && (
-                  <ListItem>
-                    <ListItemText
-                      primary="Weight"
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2" color="text.primary">
-                            Current: {selectedProgress.weight.current} kg | Target: {selectedProgress.weight.target} kg
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            {selectedProgress.weight.daily_change_needed !== 0 ? 
-                              `You need to ${selectedProgress.weight.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.weight.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.weight.weekly_change_needed).toFixed(2)} kg per week)` :
-                              'You are already at your target weight!'
-                            }
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Weight
+                        </Typography>
+                        <Typography variant="body2" color="text.primary" gutterBottom>
+                          Current: {selectedProgress.weight.current} kg | Target: {selectedProgress.weight.target} kg
+                        </Typography>
+                        <Typography variant="body2">
+                          {selectedProgress.weight.daily_change_needed !== 0 ? 
+                            `You need to ${selectedProgress.weight.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.weight.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.weight.weekly_change_needed).toFixed(2)} kg per week)` :
+                            'You are already at your target weight!'
+                          }
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 )}
                 
                 {selectedProgress.fat_percentage.target && selectedProgress.fat_percentage.current && (
-                  <ListItem>
-                    <ListItemText
-                      primary="Body Fat"
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2" color="text.primary">
-                            Current: {selectedProgress.fat_percentage.current.toFixed(1)}% | Target: {selectedProgress.fat_percentage.target.toFixed(1)}%
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            {selectedProgress.fat_percentage.daily_change_needed !== 0 ? 
-                              `You need to ${selectedProgress.fat_percentage.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.fat_percentage.daily_change_needed).toFixed(2)}% per day (${Math.abs(selectedProgress.fat_percentage.weekly_change_needed).toFixed(2)}% per week)` :
-                              'You are already at your target body fat percentage!'
-                            }
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Body Fat
+                        </Typography>
+                        <Typography variant="body2" color="text.primary" gutterBottom>
+                          Current: {selectedProgress.fat_percentage.current.toFixed(1)}% | Target: {selectedProgress.fat_percentage.target.toFixed(1)}%
+                        </Typography>
+                        <Typography variant="body2">
+                          {selectedProgress.fat_percentage.daily_change_needed !== 0 ? 
+                            `You need to ${selectedProgress.fat_percentage.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.fat_percentage.daily_change_needed).toFixed(2)}% per day (${Math.abs(selectedProgress.fat_percentage.weekly_change_needed).toFixed(2)}% per week)` :
+                            'You are already at your target body fat percentage!'
+                          }
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 )}
                 
                 {selectedProgress.muscle_mass.target && selectedProgress.muscle_mass.current && (
-                  <ListItem>
-                    <ListItemText
-                      primary="Muscle Mass"
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2" color="text.primary">
-                            Current: {selectedProgress.muscle_mass.current.toFixed(1)} kg | Target: {selectedProgress.muscle_mass.target.toFixed(1)} kg
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2">
-                            {selectedProgress.muscle_mass.daily_change_needed !== 0 ? 
-                              `You need to ${selectedProgress.muscle_mass.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.muscle_mass.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.muscle_mass.weekly_change_needed).toFixed(2)} kg per week)` :
-                              'You are already at your target muscle mass!'
-                            }
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Muscle Mass
+                        </Typography>
+                        <Typography variant="body2" color="text.primary" gutterBottom>
+                          Current: {selectedProgress.muscle_mass.current.toFixed(1)} kg | Target: {selectedProgress.muscle_mass.target.toFixed(1)} kg
+                        </Typography>
+                        <Typography variant="body2">
+                          {selectedProgress.muscle_mass.daily_change_needed !== 0 ? 
+                            `You need to ${selectedProgress.muscle_mass.daily_change_needed > 0 ? 'gain' : 'lose'} ${Math.abs(selectedProgress.muscle_mass.daily_change_needed).toFixed(2)} kg per day (${Math.abs(selectedProgress.muscle_mass.weekly_change_needed).toFixed(2)} kg per week)` :
+                            'You are already at your target muscle mass!'
+                          }
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 )}
-              </List>
+              </Grid>
             </CardContent>
           </Card>
           
@@ -352,28 +361,55 @@ const Progress = () => {
             <CardContent>
               {activeTab === 0 && selectedProgress.weight.target && (
                 <Box sx={{ height: 400 }}>
-                  <Line 
-                    options={chartOptions('Weight Projection', 'kg')} 
-                    data={prepareProjectionData('weight')} 
-                  />
+                  {(() => {
+                    const chartData = prepareProjectionData('weight');
+                    return chartData ? (
+                      <Line 
+                        options={chartOptions('Weight Projection', 'kg')} 
+                        data={chartData} 
+                      />
+                    ) : (
+                      <Typography variant="body1" align="center" sx={{ pt: 8 }}>
+                        Insufficient data to display chart
+                      </Typography>
+                    );
+                  })()}
                 </Box>
               )}
               
               {activeTab === 1 && selectedProgress.fat_percentage.target && selectedProgress.fat_percentage.current && (
                 <Box sx={{ height: 400 }}>
-                  <Line 
-                    options={chartOptions('Body Fat Projection', '%')} 
-                    data={prepareProjectionData('fat')} 
-                  />
+                  {(() => {
+                    const chartData = prepareProjectionData('fat');
+                    return chartData ? (
+                      <Line 
+                        options={chartOptions('Body Fat Projection', '%')} 
+                        data={chartData} 
+                      />
+                    ) : (
+                      <Typography variant="body1" align="center" sx={{ pt: 8 }}>
+                        Insufficient data to display chart
+                      </Typography>
+                    );
+                  })()}
                 </Box>
               )}
               
               {activeTab === 2 && selectedProgress.muscle_mass.target && selectedProgress.muscle_mass.current && (
                 <Box sx={{ height: 400 }}>
-                  <Line 
-                    options={chartOptions('Muscle Mass Projection', 'kg')} 
-                    data={prepareProjectionData('muscle')} 
-                  />
+                  {(() => {
+                    const chartData = prepareProjectionData('muscle');
+                    return chartData ? (
+                      <Line 
+                        options={chartOptions('Muscle Mass Projection', 'kg')} 
+                        data={chartData} 
+                      />
+                    ) : (
+                      <Typography variant="body1" align="center" sx={{ pt: 8 }}>
+                        Insufficient data to display chart
+                      </Typography>
+                    );
+                  })()}
                 </Box>
               )}
             </CardContent>

@@ -52,7 +52,7 @@ Follow the prompts to:
 
 Once the application is running in debug mode:
 
-1. Open the application in your browser (typically at http://localhost:3000)
+1. Open the application in your browser (typically at http://localhost:3939)
 2. Click on the "Debug" button in the navigation bar to open the Debug Panel
 3. The Debug Panel provides:
    - Server status

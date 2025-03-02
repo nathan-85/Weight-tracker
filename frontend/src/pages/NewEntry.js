@@ -35,11 +35,15 @@ const NewEntry = () => {
   const [weight, setWeight] = useState('');
   const [neck, setNeck] = useState('');
   const [belly, setBelly] = useState('');
+  const [hip, setHip] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [success, setSuccess] = useState(false);
   const [lastNeckMeasurement, setLastNeckMeasurement] = useState(null);
   
+  // Determine if we should show the hip field
+  const isFemaleMeasurementRequired = currentUser && currentUser.sex === 'female';
+
   // Fetch the user's most recent entry to get the neck measurement
   useEffect(() => {
     const fetchLastEntry = async () => {
@@ -89,6 +93,7 @@ const NewEntry = () => {
         weight: parseFloat(weight),
         neck: neck ? parseFloat(neck) : null,
         belly: belly ? parseFloat(belly) : null,
+        hip: hip ? parseFloat(hip) : null,
         user_id: currentUser ? currentUser.id : null
       };
       
@@ -99,6 +104,7 @@ const NewEntry = () => {
       setWeight('');
       setNeck('');
       setBelly('');
+      setHip('');
       setDate(new Date());
       
       // Redirect to dashboard after a short delay
@@ -236,6 +242,27 @@ const NewEntry = () => {
                 />
               </Grid>
               
+              {isFemaleMeasurementRequired && (
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Hip Circumference"
+                    type="number"
+                    value={hip}
+                    onChange={(e) => setHip(e.target.value)}
+                    fullWidth
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">cm</InputAdornment>,
+                    }}
+                    inputProps={{
+                      step: 0.1,
+                      min: 60,
+                      max: 200,
+                    }}
+                    helperText="Measured at the widest point of the hips"
+                  />
+                </Grid>
+              )}
+              
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                   <Button
@@ -316,6 +343,27 @@ const NewEntry = () => {
               </CardContent>
             </Card>
           </Grid>
+          
+          {isFemaleMeasurementRequired && (
+            <Grid item xs={12} md={4}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Hip Circumference
+                  </Typography>
+                  <Typography variant="body2">
+                    • Measure at the widest part of your hips
+                    <br />
+                    • Include the fullest part of your buttocks
+                    <br />
+                    • Keep the tape horizontal all the way around
+                    <br />
+                    • Stand with feet together for consistency
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
         </Grid>
       </Box>
       

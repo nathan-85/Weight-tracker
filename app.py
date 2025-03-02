@@ -64,14 +64,20 @@ class Entry(db.Model):
     weight = db.Column(db.Float, nullable=False)  # weight in kg
     neck = db.Column(db.Float)  # neck circumference in cm
     belly = db.Column(db.Float)  # belly circumference in cm
+    hip = db.Column(db.Float)  # hip circumference in cm for female users
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
     # Remove calculated fields from database model
     # calculated_fat_percentage and calculated_muscle_mass are no longer stored
 
     def to_dict(self):
         # Calculate values on-the-fly when converting to dict
+        # Get user details if available
+        user = User.query.get(self.user_id) if self.user_id else None
+        height = user.height if user else 185
+        gender = user.sex if user else 'male'
+        
         fat_percentage = calculate_body_fat_percentage(
-            self.weight, self.neck, self.belly
+            self.weight, self.neck, self.belly, height, gender, self.hip
         ) if all([self.weight, self.neck, self.belly]) else None
         
         muscle_mass = calculate_muscle_mass(
@@ -84,6 +90,7 @@ class Entry(db.Model):
             'weight': self.weight,
             'neck': self.neck,
             'belly': self.belly,
+            'hip': self.hip,
             'fat_percentage': fat_percentage,
             'muscle_mass': muscle_mass,
             'user_id': self.user_id
@@ -118,11 +125,12 @@ with app.app_context():
         logger.error(f"Error creating database tables: {str(e)}")
 
 # Helper functions for calculations
-def calculate_body_fat_percentage(weight, neck, belly, height=185, gender='male'):
+def calculate_body_fat_percentage(weight, neck, belly, height=185, gender='male', hip=None):
     """
     Calculate body fat percentage using the US Navy method.
     Default height is 185cm, and default gender is male.
     For a more accurate calculation, the app should collect height and gender from the user.
+    Hip measurement is required for females for accurate calculation.
     """
     if not all([weight, neck, belly]):
         return None
@@ -135,9 +143,13 @@ def calculate_body_fat_percentage(weight, neck, belly, height=185, gender='male'
     if gender.lower() == 'male':
         body_fat = 86.010 * np.log10(belly_inches - neck_inches) - 70.041 * np.log10(height_inches) + 36.76
     else:  # female
-        # For females, we would need hip measurement, but we'll use a simplified formula
-        # using just the available measurements
-        body_fat = 163.205 * np.log10(belly_inches - neck_inches) - 97.684 * np.log10(height_inches) - 78.387
+        # For females, we need hip measurement for accurate calculation
+        if not hip:
+            # Fallback to simplified formula if hip measurement is not available
+            body_fat = 163.205 * np.log10(belly_inches - neck_inches) - 97.684 * np.log10(height_inches) - 78.387
+        else:
+            hip_inches = hip / 2.54
+            body_fat = 163.205 * np.log10(belly_inches + hip_inches - neck_inches) - 97.684 * np.log10(height_inches) - 104.912
     
     # Ensure the result is within reasonable bounds
     return max(min(body_fat, 50), 3)
@@ -199,6 +211,7 @@ def add_entry():
             weight=float(data.get('weight')),
             neck=float(data.get('neck')) if data.get('neck') else None,
             belly=float(data.get('belly')) if data.get('belly') else None,
+            hip=float(data.get('hip')) if data.get('hip') else None,
             user_id=data.get('user_id')  # This can be null for backward compatibility
         )
         
@@ -247,6 +260,8 @@ def update_entry(entry_id):
             entry.neck = float(data['neck']) if data['neck'] else None
         if 'belly' in data:
             entry.belly = float(data['belly']) if data['belly'] else None
+        if 'hip' in data:
+            entry.hip = float(data['hip']) if data['hip'] else None
         if 'user_id' in data:
             entry.user_id = data['user_id']
             

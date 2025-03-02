@@ -7,12 +7,11 @@ import {
 } from '@mui/material';
 
 // Import custom hooks
-import { useUsers } from '../hooks/useUsers';
 import { useGoals } from '../hooks/useGoals';
 import { useMeasurements } from '../hooks/useMeasurements';
+import { useUserContext } from '../contexts/UserContext';
 
 // Import components
-import UserSelector from '../components/UserSelector';
 import GoalForm from '../components/GoalForm';
 import GoalTable from '../components/GoalTable';
 import GoalGuidelines from '../components/GoalGuidelines';
@@ -21,14 +20,11 @@ const Goals = () => {
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [editingGoal, setEditingGoal] = useState(null);
   
-  // Custom hooks
-  const { 
-    users, 
-    selectedUserId, 
-    setSelectedUserId, 
-    loading: loadingUsers 
-  } = useUsers();
+  // Get current user from context
+  const { currentUser } = useUserContext();
+  const selectedUserId = currentUser?.id;
   
+  // Custom hooks
   const {
     goals,
     loading: loadingGoals,
@@ -79,7 +75,7 @@ const Goals = () => {
         {editingGoalId 
           ? 'Edit Goal' 
           : selectedUserId 
-            ? `Set Goals for ${users.find(user => user.id === selectedUserId)?.name || '...'}`
+            ? `Set Goals for ${currentUser?.name || '...'}`
             : 'Set Goals'
         }
       </Typography>
@@ -89,14 +85,6 @@ const Goals = () => {
           {error}
         </Alert>
       )}
-      
-      {/* User selection */}
-      <UserSelector
-        users={users}
-        selectedUserId={selectedUserId}
-        setSelectedUserId={setSelectedUserId}
-        loading={loadingUsers}
-      />
       
       {selectedUserId ? (
         <>
@@ -138,7 +126,11 @@ const Goals = () => {
             </Alert>
           </Snackbar>
         </>
-      ) : null}
+      ) : (
+        <Alert severity="info">
+          Please select a user profile from the top menu to set goals.
+        </Alert>
+      )}
     </Box>
   );
 };

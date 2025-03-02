@@ -36,10 +36,14 @@ const EditEntry = () => {
   const [weight, setWeight] = useState('');
   const [neck, setNeck] = useState('');
   const [belly, setBelly] = useState('');
+  const [hip, setHip] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  // Determine if we should show the hip field
+  const isFemaleMeasurementRequired = currentUser && currentUser.sex === 'female';
 
   useEffect(() => {
     const fetchEntry = async () => {
@@ -58,6 +62,7 @@ const EditEntry = () => {
         setWeight(entry.weight.toString());
         setNeck(entry.neck ? entry.neck.toString() : '');
         setBelly(entry.belly ? entry.belly.toString() : '');
+        setHip(entry.hip ? entry.hip.toString() : '');
       } catch (err) {
         setError('Failed to load entry data');
         console.error(err);
@@ -86,6 +91,7 @@ const EditEntry = () => {
         weight: parseFloat(weight),
         neck: neck ? parseFloat(neck) : null,
         belly: belly ? parseFloat(belly) : null,
+        hip: hip ? parseFloat(hip) : null,
         user_id: currentUser ? currentUser.id : null
       };
       
@@ -119,6 +125,10 @@ const EditEntry = () => {
   
   const handleBellySliderChange = (event, newValue) => {
     setBelly(newValue.toString());
+  };
+  
+  const handleHipSliderChange = (event, newValue) => {
+    setHip(newValue.toString());
   };
   
   const formatAustralianDate = (date) => {
@@ -282,6 +292,37 @@ const EditEntry = () => {
                   disabled={!belly}
                 />
               </Grid>
+              
+              {isFemaleMeasurementRequired && (
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Hip Circumference"
+                    type="number"
+                    value={hip}
+                    onChange={(e) => setHip(e.target.value)}
+                    fullWidth
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">cm</InputAdornment>,
+                    }}
+                    inputProps={{
+                      step: 0.1,
+                      min: 60,
+                      max: 200,
+                    }}
+                    helperText="Measured at the widest point of the hips"
+                  />
+                  <Slider
+                    value={hip ? parseFloat(hip) : 0}
+                    onChange={handleHipSliderChange}
+                    min={60}
+                    max={150}
+                    step={0.1}
+                    sx={{ mt: 2 }}
+                    valueLabelDisplay="auto"
+                    disabled={!hip}
+                  />
+                </Grid>
+              )}
               
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>

@@ -69,7 +69,7 @@ weight_tracker/
    npm start
    ```
 
-4. Open your browser and visit `http://localhost:3000`
+4. Open your browser and visit `http://localhost:3939`
 
 ## How to Use
 

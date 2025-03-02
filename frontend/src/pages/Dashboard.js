@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Typography, 
   Grid, 
@@ -21,14 +21,11 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle,
-  Chip,
-  Avatar
+  DialogTitle
 } from '@mui/material';
 import { 
   Delete as DeleteIcon, 
-  Edit as EditIcon,
-  Person as PersonIcon
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Line } from 'react-chartjs-2';
@@ -44,6 +41,7 @@ import {
 } from 'chart.js';
 import { useNavigate } from 'react-router-dom';
 import { useUserContext } from '../contexts/UserContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { getEntries, deleteEntry } from '../services/api';
 
 // Register ChartJS components
@@ -60,19 +58,14 @@ ChartJS.register(
 const Dashboard = () => {
   const navigate = useNavigate();
   const { currentUser } = useUserContext();
+  const { darkMode } = useThemeContext();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [entryToEdit, setEntryToEdit] = useState(null);
 
-  useEffect(() => {
-    fetchEntries();
-  }, [currentUser]);
-
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getEntries(currentUser?.id);
@@ -83,7 +76,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
 
   const handleDeleteClick = (entry) => {
     setEntryToDelete(entry);
@@ -170,6 +167,12 @@ const Dashboard = () => {
       title: {
         display: true,
         text: 'Body Metrics Over Time',
+        color: darkMode ? '#ffffff' : undefined,
+      },
+      legend: {
+        labels: {
+          color: darkMode ? '#ffffff' : undefined,
+        }
       },
     },
     scales: {
@@ -180,6 +183,13 @@ const Dashboard = () => {
         title: {
           display: true,
           text: 'Weight / Muscle Mass (kg)',
+          color: darkMode ? '#ffffff' : undefined,
+        },
+        ticks: {
+          color: darkMode ? '#ffffff' : undefined,
+        },
+        grid: {
+          color: darkMode ? 'rgba(255, 255, 255, 0.1)' : undefined,
         },
       },
       y1: {
@@ -189,9 +199,22 @@ const Dashboard = () => {
         title: {
           display: true,
           text: 'Body Fat (%)',
+          color: darkMode ? '#ffffff' : undefined,
+        },
+        ticks: {
+          color: darkMode ? '#ffffff' : undefined,
         },
         grid: {
           drawOnChartArea: false,
+          color: darkMode ? 'rgba(255, 255, 255, 0.1)' : undefined,
+        },
+      },
+      x: {
+        ticks: {
+          color: darkMode ? '#ffffff' : undefined,
+        },
+        grid: {
+          color: darkMode ? 'rgba(255, 255, 255, 0.1)' : undefined,
         },
       },
     },

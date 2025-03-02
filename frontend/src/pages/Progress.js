@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Typography, 
   Box, 
@@ -10,10 +10,6 @@ import {
   Tabs,
   Tab,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Chip,
   FormControl,
   InputLabel,
   Select,
@@ -62,9 +58,30 @@ const Progress = () => {
   const [selectedGoal, setSelectedGoal] = useState('');
   const [selectedProgress, setSelectedProgress] = useState(null);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [entriesData, goalsData, progressData] = await Promise.all([
+        getEntries(currentUser?.id),
+        getGoals(currentUser?.id),
+        getProgress(currentUser?.id)
+      ]);
+      
+      setEntries(entriesData);
+      setGoals(goalsData);
+      setProgress(progressData);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load data. Please try again later.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.id]);
+
   useEffect(() => {
     fetchData();
-  }, [currentUser]);
+  }, [fetchData]);
 
   useEffect(() => {
     if (goals.length > 0) {
@@ -93,27 +110,6 @@ const Progress = () => {
       setSelectedProgress(null);
     }
   }, [progress, selectedGoal]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [entriesData, goalsData, progressData] = await Promise.all([
-        getEntries(currentUser?.id),
-        getGoals(currentUser?.id),
-        getProgress(currentUser?.id)
-      ]);
-      
-      setEntries(entriesData);
-      setGoals(goalsData);
-      setProgress(progressData);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load data. Please try again later.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -220,11 +216,6 @@ const Progress = () => {
     };
   };
 
-  const getSelectedGoalProgress = () => {
-    if (!progress || !selectedGoal) return null;
-    return progress.find(p => p.goal_id === selectedGoal);
-  };
-
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -257,7 +248,7 @@ const Progress = () => {
           >
             {goals.map((goal) => (
               <MenuItem key={goal.id} value={goal.id}>
-                {goal.name} - Target: {formatAustralianDate(goal.target_date)}
+                {goal.name} Target: {formatAustralianDate(goal.target_date)}
               </MenuItem>
             ))}
           </Select>

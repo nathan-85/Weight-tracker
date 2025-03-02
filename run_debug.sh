@@ -31,4 +31,4 @@ echo "Starting Flask app with debugging enabled..."
 echo "-----------------------------------------------"
 
 # Run the Flask app with exec to replace this shell process with the Python one
-exec python app.py 
+exec python run.py 

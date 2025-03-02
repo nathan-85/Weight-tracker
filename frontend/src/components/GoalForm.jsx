@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Box,
@@ -18,6 +18,7 @@ const GoalForm = ({
   onSubmit,
   submitting,
   editingGoalId,
+  editingGoal,
   onCancelEdit,
   currentWeight,
   currentFatPercentage,
@@ -26,14 +27,37 @@ const GoalForm = ({
   const [targetDate, setTargetDate] = useState(addMonths(new Date(), 3));
   const [targetWeight, setTargetWeight] = useState('');
   const [targetFatPercentage, setTargetFatPercentage] = useState('');
+  const [description, setDescription] = useState('');
   
+  // Populate form when editing an existing goal
+  useEffect(() => {
+    if (editingGoal) {
+      if (editingGoal.target_date) {
+        setTargetDate(new Date(editingGoal.target_date));
+      }
+      
+      if (editingGoal.target_weight !== null && editingGoal.target_weight !== undefined) {
+        setTargetWeight(editingGoal.target_weight.toString());
+      }
+      
+      if (editingGoal.target_fat_percentage !== null && editingGoal.target_fat_percentage !== undefined) {
+        setTargetFatPercentage(editingGoal.target_fat_percentage.toString());
+      }
+      
+      if (editingGoal.description !== null && editingGoal.description !== undefined) {
+        setDescription(editingGoal.description);
+      }
+    }
+  }, [editingGoal]);
+
   const resetForm = () => {
     setTargetWeight('');
     setTargetFatPercentage('');
     setTargetDate(addMonths(new Date(), 3));
+    setDescription('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!targetDate || (!targetWeight && !targetFatPercentage)) {
@@ -52,10 +76,11 @@ const GoalForm = ({
       target_weight: targetWeight ? parseFloat(targetWeight) : null,
       target_fat_percentage: targetFatPercentage ? parseFloat(targetFatPercentage) : null,
       target_muscle_mass: targetMuscleMass,
+      description: description,
       user_id: selectedUserId
     };
     
-    const success = onSubmit(editingGoalId, goalData);
+    const success = await onSubmit(editingGoalId, goalData);
     
     if (success) {
       resetForm();
@@ -78,6 +103,17 @@ const GoalForm = ({
               <Typography variant="h6" gutterBottom>
                 {editingGoalId ? 'Edit Goal' : 'New Goal'}
               </Typography>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add a description for this goal"
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
             
             <Grid item xs={12} md={6}>

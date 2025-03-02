@@ -11,7 +11,8 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Typography
 } from '@mui/material';
 import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { format, differenceInDays } from 'date-fns';
@@ -42,6 +43,21 @@ const GoalTable = ({
     );
   }
 
+  // Helper function to display change data
+  const showChange = (change, unit) => {
+    if (!change) return null;
+    
+    return (
+      <Typography 
+        variant="caption" 
+        display="block" 
+        color={change > 0 ? "success.main" : "error.main"}
+      >
+        {change > 0 ? "+" : ""}{change}/{unit} per week
+      </Typography>
+    );
+  };
+
   return (
     <TableContainer component={Paper}>
       <Table>
@@ -51,6 +67,7 @@ const GoalTable = ({
             <TableCell align="right">Target Weight (kg)</TableCell>
             <TableCell align="right">Target Body Fat (%)</TableCell>
             <TableCell align="right">Target Muscle Mass (kg)</TableCell>
+            <TableCell>Description</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -60,70 +77,93 @@ const GoalTable = ({
             .map((goal) => {
               const daysRemaining = differenceInDays(new Date(goal.target_date), new Date());
               
-              // Calculate weekly changes (daily * 7)
-              const weightChangePerWeek = currentWeight && goal.target_weight && daysRemaining > 0 
-                ? (((goal.target_weight - currentWeight) / daysRemaining) * 7).toFixed(2) 
-                : null;
-                
-              const fatChangePerWeek = currentFatPercentage && goal.target_fat_percentage && daysRemaining > 0 
-                ? (((goal.target_fat_percentage - currentFatPercentage) / daysRemaining) * 7).toFixed(2) 
-                : null;
-                
-              const muscleChangePerWeek = (() => {
-                if (currentWeight && currentFatPercentage && goal.target_muscle_mass && daysRemaining > 0) {
-                  const currentMuscleMass = calculateMuscleMass(currentWeight, currentFatPercentage);
-                  if (currentMuscleMass) {
-                    return (((goal.target_muscle_mass - currentMuscleMass) / daysRemaining) * 7).toFixed(2);
-                  }
+              // Calculate required weekly changes
+              let weightChange = null;
+              let fatChange = null;
+              let muscleChange = null;
+              
+              if (currentWeight && goal.target_weight) {
+                const difference = goal.target_weight - currentWeight;
+                const weeks = Math.max(daysRemaining / 7, 1);
+                weightChange = (difference / weeks).toFixed(1);
+              }
+              
+              if (currentFatPercentage && goal.target_fat_percentage) {
+                const difference = goal.target_fat_percentage - currentFatPercentage;
+                const weeks = Math.max(daysRemaining / 7, 1);
+                fatChange = (difference / weeks).toFixed(1);
+              }
+              
+              // Calculate muscle change
+              if (currentWeight && currentFatPercentage && goal.target_muscle_mass) {
+                const currentMuscleMass = calculateMuscleMass(currentWeight, currentFatPercentage);
+                if (currentMuscleMass) {
+                  const difference = goal.target_muscle_mass - currentMuscleMass;
+                  const weeks = Math.max(daysRemaining / 7, 1);
+                  muscleChange = (difference / weeks).toFixed(1);
                 }
-                return null;
-              })();
+              }
               
               return (
-                <TableRow key={goal.id}>
-                  <TableCell component="th" scope="row">
+                <TableRow key={goal.id} hover selected={editingGoalId === goal.id}>
+                  <TableCell>
                     {format(new Date(goal.target_date), 'MMM d, yyyy')}
+                    {daysRemaining > 0 && (
+                      <Typography variant="caption" display="block" color="textSecondary">
+                        {daysRemaining} days remaining
+                      </Typography>
+                    )}
                   </TableCell>
+                  
                   <TableCell align="right">
-                    {goal.target_weight 
-                      ? `${goal.target_weight.toFixed(1)} ${weightChangePerWeek 
-                          ? `(${weightChangePerWeek > 0 ? '+' : ''}${weightChangePerWeek}/week)` 
-                          : ''}`
-                      : 'Not set'}
+                    {goal.target_weight ? (
+                      <>
+                        {goal.target_weight.toFixed(1)}
+                        {showChange(weightChange, 'kg')}
+                      </>
+                    ) : 'N/A'}
                   </TableCell>
+                  
                   <TableCell align="right">
-                    {goal.target_fat_percentage 
-                      ? `${goal.target_fat_percentage.toFixed(1)} ${fatChangePerWeek 
-                          ? `(${fatChangePerWeek > 0 ? '+' : ''}${fatChangePerWeek}/week)` 
-                          : ''}`
-                      : 'Not set'}
+                    {goal.target_fat_percentage ? (
+                      <>
+                        {goal.target_fat_percentage.toFixed(1)}%
+                        {showChange(fatChange, '%')}
+                      </>
+                    ) : 'N/A'}
                   </TableCell>
+                  
                   <TableCell align="right">
-                    {goal.target_muscle_mass 
-                      ? `${goal.target_muscle_mass.toFixed(1)} ${muscleChangePerWeek 
-                          ? `(${muscleChangePerWeek > 0 ? '+' : ''}${muscleChangePerWeek}/week)` 
-                          : ''}`
-                      : 'Not set'}
+                    {goal.target_muscle_mass ? (
+                      <>
+                        {goal.target_muscle_mass.toFixed(1)}
+                        {showChange(muscleChange, 'kg')}
+                      </>
+                    ) : 'N/A'}
                   </TableCell>
+
+                  <TableCell>
+                    {goal.description || ''}
+                  </TableCell>
+                  
                   <TableCell align="right">
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Box>
                       <Tooltip title="Edit">
                         <IconButton 
-                          size="small" 
-                          color="primary"
-                          onClick={() => onEdit(goal)}
+                          onClick={() => onEdit(goal)} 
+                          size="small"
                           disabled={editingGoalId === goal.id}
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
                         <IconButton 
-                          size="small" 
+                          onClick={() => onDelete(goal.id)} 
+                          size="small"
                           color="error"
-                          onClick={() => onDelete(goal.id)}
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>

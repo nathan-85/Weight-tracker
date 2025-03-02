@@ -125,14 +125,14 @@ def main():
             if system == "Windows":
                 print("Starting client with npm start...")
                 subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", 
-                                 f"cd {frontend_path} && npm start"])
+                                 f"cd {frontend_path} && set PORT=3939 && npm start"])
             else:
                 print("Starting client with npm start...")
                 # Use a shell script to start npm in a new terminal
                 with open("start_client.sh", "w") as f:
                     f.write(f"""#!/bin/bash
 cd {frontend_path}
-npm start
+PORT=3939 npm start
 """)
                 os.chmod("start_client.sh", 0o755)
                 

@@ -31,7 +31,28 @@ weight_tracker/
 
 ## Setup
 
-### Backend Setup
+### Quick Start
+
+The easiest way to start the application is to use the provided startup scripts:
+
+- **On macOS/Linux**: 
+  ```
+  chmod +x start_app.sh  # Make executable (first time only)
+  ./start_app.sh
+  ```
+
+- **On Windows**:
+  ```
+  start_app.bat
+  ```
+
+These scripts will start both the backend server and frontend client automatically.
+
+### Manual Setup
+
+If you prefer to set up the components separately, follow these steps:
+
+#### Backend Setup
 
 1. Create a virtual environment:
    ```
@@ -52,7 +73,7 @@ weight_tracker/
    python run.py
    ```
 
-### Frontend Setup
+#### Frontend Setup
 
 1. Navigate to the frontend directory:
    ```
@@ -66,7 +87,13 @@ weight_tracker/
 
 3. Start the frontend development server:
    ```
-   npm start
+   PORT=3939 npm start
+   ```
+   
+   Alternatively, you can use the provided script:
+   ```
+   chmod +x start_client.sh  # Make executable (first time only)
+   ./start_client.sh
    ```
 
 4. Open your browser and visit `http://localhost:3939`

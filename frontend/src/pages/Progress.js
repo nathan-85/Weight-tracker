@@ -47,6 +47,13 @@ const formatAustralianDate = (dateString) => {
   return format(date, 'dd/MM/yyyy');
 };
 
+// Format goal name for display
+const formatGoalName = (goal) => {
+  return goal.description ? 
+    `${goal.description} - ${formatAustralianDate(goal.target_date)}` : 
+    formatAustralianDate(goal.target_date);
+};
+
 const Progress = () => {
   const { currentUser } = useUserContext();
   const [entries, setEntries] = useState([]);
@@ -248,7 +255,7 @@ const Progress = () => {
           >
             {goals.map((goal) => (
               <MenuItem key={goal.id} value={goal.id}>
-                {goal.name} Target: {formatAustralianDate(goal.target_date)}
+                {formatGoalName(goal)}
               </MenuItem>
             ))}
           </Select>

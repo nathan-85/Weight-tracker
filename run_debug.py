@@ -55,12 +55,12 @@ def main():
         # Use python executable from the current environment
         python_exec = sys.executable
         
-        # Run app.py as a direct process so it inherits our environment variables
-        print(f"Running: {python_exec} app.py")
+        # Run run.py instead of app.py
+        print(f"Running: {python_exec} run.py")
         sys.stdout.flush()  # Make sure the message is printed before subprocess output
         
         # Use os.execl instead of subprocess to ensure environment variables are passed correctly
-        os.execl(python_exec, python_exec, "app.py")
+        os.execl(python_exec, python_exec, "run.py")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
         return 1

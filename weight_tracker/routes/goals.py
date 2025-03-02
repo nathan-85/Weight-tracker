@@ -42,6 +42,7 @@ def add_goal():
             target_weight=float(data.get('target_weight')) if data.get('target_weight') else None,
             target_fat_percentage=float(data.get('target_fat_percentage')) if data.get('target_fat_percentage') else None,
             target_muscle_mass=float(data.get('target_muscle_mass')) if data.get('target_muscle_mass') else None,
+            description=data.get('description', None),
             user_id=data.get('user_id')  # This can be null for backward compatibility
         )
         
@@ -73,29 +74,30 @@ def delete_goal(goal_id):
 @goals_bp.route('/<int:goal_id>', methods=['PUT'])
 def update_goal(goal_id):
     try:
-        goal = Goal.query.get(goal_id)
-        if not goal:
-            return jsonify({'error': 'Goal not found'}), 404
-            
+        goal = Goal.query.get_or_404(goal_id)
         data = request.json
         
-        # Update goal fields if provided
+        # Update fields if they exist in the request
         if 'target_date' in data:
             try:
                 goal.target_date = datetime.strptime(data['target_date'], '%Y-%m-%d')
             except ValueError:
                 return jsonify({'error': 'Invalid date format for target_date. Use YYYY-MM-DD'}), 400
-        
+                
         if 'target_weight' in data:
-            goal.target_weight = float(data['target_weight']) if data['target_weight'] else None
+            goal.target_weight = float(data['target_weight']) if data['target_weight'] is not None else None
+            
         if 'target_fat_percentage' in data:
-            goal.target_fat_percentage = float(data['target_fat_percentage']) if data['target_fat_percentage'] else None
+            goal.target_fat_percentage = float(data['target_fat_percentage']) if data['target_fat_percentage'] is not None else None
+            
         if 'target_muscle_mass' in data:
-            goal.target_muscle_mass = float(data['target_muscle_mass']) if data['target_muscle_mass'] else None
-        if 'user_id' in data:
-            goal.user_id = data['user_id']
+            goal.target_muscle_mass = float(data['target_muscle_mass']) if data['target_muscle_mass'] is not None else None
+            
+        if 'description' in data:
+            goal.description = data.get('description', None)
             
         db.session.commit()
+        
         return jsonify(goal.to_dict())
     except Exception as e:
         db.session.rollback()

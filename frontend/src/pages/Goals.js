@@ -4,6 +4,7 @@ import {
   Box, 
   Alert,
   Snackbar,
+  Grid,
 } from '@mui/material';
 
 // Import custom hooks
@@ -43,17 +44,30 @@ const Goals = () => {
     currentFatPercentage
   } = useMeasurements(selectedUserId);
 
-  const handleSubmit = (goalId, goalData) => {
+  const handleSubmit = async (goalId, goalData) => {
     if (goalId) {
-      return updateGoal(goalId, goalData);
+      const success = await updateGoal(goalId, goalData);
+      if (success) {
+        // Reset editing state after successful update
+        setEditingGoalId(null);
+        setEditingGoal(null);
+      }
+      return success;
     } else {
-      return addGoal(goalData);
+      return await addGoal(goalData);
     }
   };
 
   const handleEditGoal = (goal) => {
     setEditingGoalId(goal.id);
-    setEditingGoal(goal);
+    setEditingGoal({
+      target_date: goal.target_date,
+      target_weight: goal.target_weight,
+      target_fat_percentage: goal.target_fat_percentage,
+      target_muscle_mass: goal.target_muscle_mass,
+      description: goal.description,
+      user_id: goal.user_id
+    });
   };
 
   const handleCancelEdit = () => {
@@ -70,67 +84,53 @@ const Goals = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {editingGoalId 
-          ? 'Edit Goal' 
-          : selectedUserId 
-            ? `Set Goals for ${currentUser?.name || '...'}`
-            : 'Set Goals'
-        }
+    <Box sx={{ padding: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Weight Goals
       </Typography>
       
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
       
-      {selectedUserId ? (
-        <>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
           <GoalForm 
             onSubmit={handleSubmit}
-            submitting={submitting}
             editingGoalId={editingGoalId}
             editingGoal={editingGoal}
             onCancelEdit={handleCancelEdit}
+            submitting={submitting}
             currentWeight={currentWeight}
             currentFatPercentage={currentFatPercentage}
             selectedUserId={selectedUserId}
           />
           
-          <Typography variant="h5" gutterBottom>
-            Your Goals
-          </Typography>
+          <GoalGuidelines />
           
           <GoalTable 
             goals={goals}
             loading={loadingGoals}
             onEdit={handleEditGoal}
             onDelete={handleDeleteGoal}
+            editingGoalId={editingGoalId}
             currentWeight={currentWeight}
             currentFatPercentage={currentFatPercentage}
-            editingGoalId={editingGoalId}
           />
-          
-          <GoalGuidelines />
-          
-          <Snackbar
-            open={success}
-            autoHideDuration={3000}
-            onClose={handleCloseSnackbar}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert onClose={handleCloseSnackbar} severity="success">
-              {successMessage}
-            </Alert>
-          </Snackbar>
-        </>
-      ) : (
-        <Alert severity="info">
-          Please select a user profile from the top menu to set goals.
+        </Grid>
+      </Grid>
+      
+      <Snackbar
+        open={success}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert onClose={handleCloseSnackbar} severity="success">
+          {successMessage}
         </Alert>
-      )}
+      </Snackbar>
     </Box>
   );
 };

@@ -19,3 +19,4 @@ venv/
 *.swp
 
 *.db
+frontend/src/.DS_Store

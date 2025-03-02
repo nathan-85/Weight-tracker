@@ -232,7 +232,12 @@ const Goals = () => {
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
-        {editingGoalId ? 'Edit Goal' : 'Set Your Goals'}
+        {editingGoalId 
+          ? 'Edit Goal' 
+          : selectedUserId 
+            ? `Set Goals for ${users.find(user => user.id === selectedUserId)?.name || '...'}`
+            : 'Set Goals'
+        }
       </Typography>
       
       {error && (

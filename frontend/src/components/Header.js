@@ -179,10 +179,11 @@ const Header = () => {
                   startIcon={
                     <Avatar 
                       sx={{ 
-                        width: 30, 
-                        height: 30, 
+                        width: 40, 
+                        height: 40, 
                         bgcolor: 'primary.main',
-                        fontSize: '0.875rem'
+                        fontSize: '1rem',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                       }}
                     >
                       {getUserInitials(currentUser.name)}
@@ -190,8 +191,13 @@ const Header = () => {
                   }
                   sx={{ 
                     textTransform: 'none', 
-                    fontWeight: 500,
-                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '8px',
+                    py: 1,
+                    px: 2
                   }}
                 >
                   {currentUser.name}

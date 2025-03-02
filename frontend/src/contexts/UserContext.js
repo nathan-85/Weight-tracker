@@ -81,11 +81,35 @@ export const UserProvider = ({ children }) => {
   // Load users on initial mount
   useEffect(() => {
     const initializeUsers = async () => {
-      await loadUsers();
-      
-      // If no users exist after loading, create a default one
-      if (users.length === 0) {
-        await createDefaultUser();
+      try {
+        const usersData = await getUsers();
+        setUsers(usersData);
+        
+        // Only create a default user if no users exist in the database
+        if (usersData.length === 0) {
+          await createDefaultUser();
+        } else if (!currentUser) {
+          // If there are users but no current user is selected, select one
+          const lastSelectedUserId = localStorage.getItem('currentUserId');
+          
+          if (lastSelectedUserId) {
+            const foundUser = usersData.find(user => user.id === parseInt(lastSelectedUserId));
+            if (foundUser) {
+              setCurrentUser(foundUser);
+            } else {
+              setCurrentUser(usersData[0]);
+              localStorage.setItem('currentUserId', usersData[0].id.toString());
+            }
+          } else {
+            setCurrentUser(usersData[0]);
+            localStorage.setItem('currentUserId', usersData[0].id.toString());
+          }
+        }
+      } catch (err) {
+        setError('Failed to initialize users');
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
     

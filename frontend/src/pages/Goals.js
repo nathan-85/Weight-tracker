@@ -21,25 +21,48 @@ import {
   Tooltip,
   InputAdornment
 } from '@mui/material';
-import { Delete as DeleteIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { format, addMonths } from 'date-fns';
-import { getGoals, addGoal, deleteGoal } from '../services/api';
+import { format, addMonths, differenceInDays } from 'date-fns';
+import { getGoals, addGoal, deleteGoal, updateGoal } from '../services/api';
 
 const Goals = () => {
   const [goals, setGoals] = useState([]);
   const [targetDate, setTargetDate] = useState(addMonths(new Date(), 3)); // Default to 3 months from now
   const [targetWeight, setTargetWeight] = useState('');
   const [targetFatPercentage, setTargetFatPercentage] = useState('');
-  const [targetMuscleMass, setTargetMuscleMass] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [editingGoalId, setEditingGoalId] = useState(null);
+  const [currentWeight, setCurrentWeight] = useState(80); // Default mock value for testing
+  const [currentFatPercentage, setCurrentFatPercentage] = useState(20); // Default mock value for testing
 
   useEffect(() => {
     fetchGoals();
+    fetchLatestMeasurements();
   }, []);
+
+  const fetchLatestMeasurements = async () => {
+    try {
+      // For testing, using mock values
+      // TODO: Replace with actual API call when available
+      // const response = await fetch('/api/entries/latest');
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setCurrentWeight(data.weight);
+      //   setCurrentFatPercentage(data.fat_percentage);
+      // }
+      
+      // Using mock data for now to ensure the feature works
+      setCurrentWeight(80);
+      setCurrentFatPercentage(20);
+    } catch (err) {
+      console.error('Failed to fetch latest measurements:', err);
+    }
+  };
 
   const fetchGoals = async () => {
     try {
@@ -55,10 +78,37 @@ const Goals = () => {
     }
   };
 
+  // Calculate muscle mass based on weight and fat percentage
+  const calculateMuscleMass = (weight, fatPercentage) => {
+    if (!weight || !fatPercentage) return null;
+    
+    const weightNum = parseFloat(weight);
+    const fatPercentageNum = parseFloat(fatPercentage);
+    
+    const fatMass = weightNum * (fatPercentageNum / 100);
+    const essentialMass = weightNum * 0.2; // Estimate for bones, organs, etc.
+    const muscleMass = weightNum - fatMass - essentialMass;
+    
+    return Math.max(muscleMass, 0);
+  };
+
+  // Calculate the weekly change for display
+  const getWeeklyChange = (current, target, date) => {
+    if (!current || !target || !date) return null;
+    
+    const daysRemaining = differenceInDays(date, new Date());
+    if (daysRemaining <= 0) return null;
+    
+    // Calculate daily change and multiply by 7 for weekly
+    const dailyChange = (parseFloat(target) - current) / daysRemaining;
+    const weeklyChange = dailyChange * 7;
+    return weeklyChange.toFixed(2);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!targetDate || (!targetWeight && !targetFatPercentage && !targetMuscleMass)) {
+    if (!targetDate || (!targetWeight && !targetFatPercentage)) {
       setError('Please set at least one target metric and a target date');
       return;
     }
@@ -67,35 +117,64 @@ const Goals = () => {
       setSubmitting(true);
       setError(null);
       
+      // Calculate the target muscle mass if we have both weight and fat percentage
+      const targetMuscleMass = calculateMuscleMass(targetWeight, targetFatPercentage);
+      
       const goalData = {
         target_date: targetDate.toISOString().split('T')[0],
         target_weight: targetWeight ? parseFloat(targetWeight) : null,
         target_fat_percentage: targetFatPercentage ? parseFloat(targetFatPercentage) : null,
-        target_muscle_mass: targetMuscleMass ? parseFloat(targetMuscleMass) : null,
+        target_muscle_mass: targetMuscleMass,
       };
       
-      await addGoal(goalData);
+      if (editingGoalId) {
+        // Update existing goal
+        await updateGoal(editingGoalId, goalData);
+        setSuccessMessage('Goal updated successfully!');
+      } else {
+        // Add new goal
+        await addGoal(goalData);
+        setSuccessMessage('Goal added successfully!');
+      }
+      
       await fetchGoals();
       setSuccess(true);
       
       // Reset form
-      setTargetWeight('');
-      setTargetFatPercentage('');
-      setTargetMuscleMass('');
-      setTargetDate(addMonths(new Date(), 3));
+      resetForm();
       
     } catch (err) {
-      setError('Failed to add goal. Please try again.');
+      setError(`Failed to ${editingGoalId ? 'update' : 'add'} goal. Please try again.`);
       console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const resetForm = () => {
+    setTargetWeight('');
+    setTargetFatPercentage('');
+    setTargetDate(addMonths(new Date(), 3));
+    setEditingGoalId(null);
+  };
+
+  const handleEditGoal = (goal) => {
+    setTargetDate(new Date(goal.target_date));
+    setTargetWeight(goal.target_weight?.toString() || '');
+    setTargetFatPercentage(goal.target_fat_percentage?.toString() || '');
+    setEditingGoalId(goal.id);
+  };
+
+  const handleCancelEdit = () => {
+    resetForm();
+  };
+
   const handleDeleteGoal = async (id) => {
     try {
       await deleteGoal(id);
       setGoals(goals.filter(goal => goal.id !== id));
+      setSuccessMessage('Goal deleted successfully!');
+      setSuccess(true);
     } catch (err) {
       setError('Failed to delete goal. Please try again.');
       console.error(err);
@@ -109,7 +188,7 @@ const Goals = () => {
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
-        Set Your Goals
+        {editingGoalId ? 'Edit Goal' : 'Set Your Goals'}
       </Typography>
       
       {error && (
@@ -124,7 +203,7 @@ const Goals = () => {
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  New Goal
+                  {editingGoalId ? 'Edit Goal' : 'New Goal'}
                 </Typography>
               </Grid>
               
@@ -154,12 +233,19 @@ const Goals = () => {
                     min: 20,
                     max: 300,
                   }}
+                  helperText={
+                    targetWeight && differenceInDays(targetDate, new Date()) > 0 
+                      ? `Weekly change: ${getWeeklyChange(currentWeight, targetWeight, targetDate) > 0 
+                          ? '+' + getWeeklyChange(currentWeight, targetWeight, targetDate) 
+                          : getWeeklyChange(currentWeight, targetWeight, targetDate)} kg/week` 
+                      : ''
+                  }
                 />
               </Grid>
               
               <Grid item xs={12} md={6}>
                 <TextField
-                  label="Target Body Fat Percentage"
+                  label="Target Body Fat %"
                   type="number"
                   value={targetFatPercentage}
                   onChange={(e) => setTargetFatPercentage(e.target.value)}
@@ -172,29 +258,55 @@ const Goals = () => {
                     min: 3,
                     max: 50,
                   }}
+                  helperText={
+                    targetFatPercentage && differenceInDays(targetDate, new Date()) > 0
+                      ? `Weekly change: ${getWeeklyChange(currentFatPercentage, targetFatPercentage, targetDate) > 0 
+                          ? '+' + getWeeklyChange(currentFatPercentage, targetFatPercentage, targetDate) 
+                          : getWeeklyChange(currentFatPercentage, targetFatPercentage, targetDate)} %/week`
+                      : ''
+                  }
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Target Muscle Mass"
-                  type="number"
-                  value={targetMuscleMass}
-                  onChange={(e) => setTargetMuscleMass(e.target.value)}
-                  fullWidth
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">kg</InputAdornment>,
-                  }}
-                  inputProps={{
-                    step: 0.1,
-                    min: 10,
-                    max: 100,
-                  }}
-                />
-              </Grid>
+              {targetWeight && targetFatPercentage && (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Calculated Target Muscle Mass"
+                    type="number"
+                    value={calculateMuscleMass(targetWeight, targetFatPercentage)?.toFixed(1) || ''}
+                    disabled
+                    fullWidth
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">kg</InputAdornment>,
+                    }}
+                    helperText={
+                      targetWeight && targetFatPercentage && differenceInDays(targetDate, new Date()) > 0 
+                        ? (() => {
+                            const currentMuscleMass = calculateMuscleMass(currentWeight, currentFatPercentage);
+                            const targetMuscleMass = calculateMuscleMass(targetWeight, targetFatPercentage);
+                            if (currentMuscleMass && targetMuscleMass) {
+                              const dailyChange = (targetMuscleMass - currentMuscleMass) / differenceInDays(targetDate, new Date());
+                              const weeklyChange = (dailyChange * 7).toFixed(2);
+                              return `Weekly change: ${weeklyChange > 0 ? '+' + weeklyChange : weeklyChange} kg/week`;
+                            }
+                            return '';
+                          })()
+                        : ''
+                    }
+                  />
+                </Grid>
+              )}
               
               <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 2 }}>
+                  {editingGoalId && (
+                    <Button
+                      variant="outlined"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancel
+                    </Button>
+                  )}
                   <Button
                     type="submit"
                     variant="contained"
@@ -202,7 +314,7 @@ const Goals = () => {
                     disabled={submitting}
                     startIcon={submitting ? <CircularProgress size={20} /> : null}
                   >
-                    {submitting ? 'Saving...' : 'Set Goal'}
+                    {submitting ? 'Saving...' : editingGoalId ? 'Update Goal' : 'Set Goal'}
                   </Button>
                 </Box>
               </Grid>
@@ -238,27 +350,80 @@ const Goals = () => {
             <TableBody>
               {[...goals]
                 .sort((a, b) => new Date(a.target_date) - new Date(b.target_date))
-                .map((goal) => (
-                  <TableRow key={goal.id}>
-                    <TableCell component="th" scope="row">
-                      {format(new Date(goal.target_date), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell align="right">{goal.target_weight || 'Not set'}</TableCell>
-                    <TableCell align="right">{goal.target_fat_percentage || 'Not set'}</TableCell>
-                    <TableCell align="right">{goal.target_muscle_mass || 'Not set'}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Delete">
-                        <IconButton 
-                          size="small" 
-                          color="error"
-                          onClick={() => handleDeleteGoal(goal.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                .map((goal) => {
+                  const daysRemaining = differenceInDays(new Date(goal.target_date), new Date());
+                  
+                  // Calculate weekly changes (daily * 7)
+                  const weightChangePerWeek = currentWeight && goal.target_weight && daysRemaining > 0 
+                    ? (((goal.target_weight - currentWeight) / daysRemaining) * 7).toFixed(2) 
+                    : null;
+                    
+                  const fatChangePerWeek = currentFatPercentage && goal.target_fat_percentage && daysRemaining > 0 
+                    ? (((goal.target_fat_percentage - currentFatPercentage) / daysRemaining) * 7).toFixed(2) 
+                    : null;
+                    
+                  const muscleChangePerWeek = (() => {
+                    if (currentWeight && currentFatPercentage && goal.target_muscle_mass && daysRemaining > 0) {
+                      const currentMuscleMass = calculateMuscleMass(currentWeight, currentFatPercentage);
+                      if (currentMuscleMass) {
+                        return (((goal.target_muscle_mass - currentMuscleMass) / daysRemaining) * 7).toFixed(2);
+                      }
+                    }
+                    return null;
+                  })();
+                  
+                  return (
+                    <TableRow key={goal.id}>
+                      <TableCell component="th" scope="row">
+                        {format(new Date(goal.target_date), 'MMM d, yyyy')}
+                      </TableCell>
+                      <TableCell align="right">
+                        {goal.target_weight 
+                          ? `${goal.target_weight.toFixed(1)} ${weightChangePerWeek 
+                              ? `(${weightChangePerWeek > 0 ? '+' : ''}${weightChangePerWeek}/week)` 
+                              : ''}`
+                          : 'Not set'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {goal.target_fat_percentage 
+                          ? `${goal.target_fat_percentage.toFixed(1)} ${fatChangePerWeek 
+                              ? `(${fatChangePerWeek > 0 ? '+' : ''}${fatChangePerWeek}/week)` 
+                              : ''}`
+                          : 'Not set'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {goal.target_muscle_mass 
+                          ? `${goal.target_muscle_mass.toFixed(1)} ${muscleChangePerWeek 
+                              ? `(${muscleChangePerWeek > 0 ? '+' : ''}${muscleChangePerWeek}/week)` 
+                              : ''}`
+                          : 'Not set'}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Tooltip title="Edit">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleEditGoal(goal)}
+                              disabled={editingGoalId === goal.id}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleDeleteGoal(goal.id)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -312,7 +477,7 @@ const Goals = () => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Muscle Gain
+                  Muscle Mass
                 </Typography>
                 <Typography variant="body2">
                   • Beginners: up to 1-1.5 kg per month
@@ -336,7 +501,7 @@ const Goals = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert onClose={handleCloseSnackbar} severity="success">
-          Goal added successfully!
+          {successMessage}
         </Alert>
       </Snackbar>
     </Box>

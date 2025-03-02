@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import NewProfile from './pages/NewProfile';
 import EditProfile from './pages/EditProfile';
 import EditEntry from './pages/EditEntry';
+import Settings from './pages/Settings';
 
 function App() {
   // Check if debug mode is enabled in localStorage
@@ -32,6 +33,7 @@ function App() {
               <Route path="/edit-entry/:entryId" element={<EditEntry />} />
               <Route path="/goals" element={<Goals />} />
               <Route path="/progress" element={<Progress />} />
+              <Route path="/settings" element={<Settings />} />
               {isDebugMode && <Route path="/debug" element={<Debug />} />}
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/new" element={<NewProfile />} />
@@ -44,4 +46,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

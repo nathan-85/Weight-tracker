@@ -18,9 +18,6 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
-  Select,
-  FormControl,
-  InputLabel,
   Avatar,
   Tooltip
 } from '@mui/material';
@@ -32,10 +29,11 @@ import {
   ShowChart as ChartIcon,
   BugReport as DebugIcon,
   Person as PersonIcon,
-  Add as AddPersonIcon
+  Add as AddPersonIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useUserContext } from '../contexts/UserContext';
-import { format } from 'date-fns';
+// import { format } from 'date-fns';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
@@ -43,6 +41,7 @@ const navItems = [
   { name: 'Goals', path: '/goals', icon: <FlagIcon /> },
   { name: 'Progress', path: '/progress', icon: <ChartIcon /> },
   { name: 'Profile', path: '/profile', icon: <PersonIcon /> },
+  { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 
 const Header = ({ isDebugMode }) => {
@@ -50,22 +49,14 @@ const Header = ({ isDebugMode }) => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [menuOpen, setMenuOpen] = useState(false);
   const [debugMenuOpen, setDebugMenuOpen] = useState(false);
   const [debugAnchorEl, setDebugAnchorEl] = useState(null);
   const [showDebugMode, setShowDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
-  const { users, currentUser, switchUser, loading: usersLoading } = useUserContext();
+  const { users, currentUser, switchUser } = useUserContext();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
-  };
-
-  const toggleDrawer = (open) => (event) => {
-    if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
-      return;
-    }
-    setMenuOpen(open);
   };
 
   const handleDebugMenuOpen = (event) => {
@@ -132,16 +123,17 @@ const Header = ({ isDebugMode }) => {
     { text: 'Goals', icon: <FlagIcon />, path: '/goals' },
     { text: 'Progress', icon: <ChartIcon />, path: '/progress' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
+    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  // const isActive = (path) => {
+  //   return location.pathname === path;
+  // };
 
-  const formatAustralianDate = (date) => {
-    if (!date) return '';
-    return format(new Date(date), 'dd/MM/yyyy');
-  };
+  // const formatAustralianDate = (date) => {
+  //   if (!date) return '';
+  //   return format(new Date(date), 'dd/MM/yyyy');
+  // };
 
   const getUserInitials = (name) => {
     if (!name) return '?';

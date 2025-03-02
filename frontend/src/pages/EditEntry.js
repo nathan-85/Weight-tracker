@@ -13,7 +13,6 @@ import {
   InputAdornment,
   Slider,
   IconButton,
-  Tooltip,
   Chip,
   Avatar
 } from '@mui/material';
@@ -24,8 +23,7 @@ import { useUserContext } from '../contexts/UserContext';
 import { format } from 'date-fns';
 import { 
   Save as SaveIcon,
-  ArrowBack as ArrowBackIcon,
-  Help as HelpIcon
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 
 const EditEntry = () => {

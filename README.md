@@ -10,6 +10,25 @@ A beautiful and simple web application to track your weight, body fat, and muscl
 - Compare your actual progress against required progress to meet goals
 - Store all data locally in an SQLite database for privacy
 
+## Project Structure
+
+The application has been refactored into a modular structure for better maintainability:
+
+```
+weight_tracker/
+├── __init__.py          # Application factory
+├── config.py            # Configuration settings
+├── models.py            # Database models
+├── utils.py             # Helper functions
+└── routes/              # API routes
+    ├── __init__.py      # Blueprint registration
+    ├── entries.py       # Weight entry endpoints
+    ├── goals.py         # Goal tracking endpoints  
+    ├── progress.py      # Progress calculation endpoints
+    ├── users.py         # User management endpoints
+    └── debug.py         # Debug and status endpoints
+```
+
 ## Setup
 
 ### Backend Setup
@@ -30,7 +49,7 @@ A beautiful and simple web application to track your weight, body fat, and muscl
 
 4. Start the backend server:
    ```
-   python app.py
+   python run.py
    ```
 
 ### Frontend Setup

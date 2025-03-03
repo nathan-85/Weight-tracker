@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Container,
   Typography,
-  Paper,
   Box,
   FormControlLabel,
   Switch,
@@ -10,14 +9,11 @@ import {
   Card,
   CardContent,
   Slider,
-  TextField,
-  Alert,
   Tooltip,
   IconButton
 } from '@mui/material';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import SpeedIcon from '@mui/icons-material/Speed';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useSettingsContext } from '../contexts/SettingsContext';

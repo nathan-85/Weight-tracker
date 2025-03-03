@@ -4,13 +4,12 @@ import {
   Box, 
   Alert,
   Snackbar,
-  Grid,
   Paper,
   useTheme,
   useMediaQuery,
   IconButton,
-  Collapse,
-  Drawer
+  Drawer,
+  Container
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -99,8 +98,7 @@ const Goals = () => {
   return (
     <Box 
       sx={{ 
-        height: '100vh',
-        overflow: 'hidden',
+        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : 'grey.50'
@@ -108,7 +106,7 @@ const Goals = () => {
     >
       <Box 
         sx={{ 
-          p: 3, 
+          p: 2,
           borderBottom: 1, 
           borderColor: 'divider',
           bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
@@ -120,119 +118,110 @@ const Goals = () => {
       </Box>
 
       {goalsError && (
-        <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+        <Alert severity="error" sx={{ mx: 2, mt: 1 }}>
           {goalsError}
         </Alert>
       )}
       
       {measurementsError && (
-        <Alert severity="warning" sx={{ mx: 3, mt: 2 }}>
+        <Alert severity="warning" sx={{ mx: 2, mt: 1 }}>
           {measurementsError}
         </Alert>
       )}
 
       {currentWeight === null && !loadingMeasurements && (
-        <Alert severity="info" sx={{ mx: 3, mt: 2 }}>
+        <Alert severity="info" sx={{ mx: 2, mt: 1 }}>
           No recent measurements found. Add a new entry with your current measurements to see progress calculations.
         </Alert>
       )}
 
-      <Box sx={{ 
-        display: 'flex', 
-        flex: 1,
-        overflow: 'hidden',
-        p: 3,
-        gap: 3
-      }}>
-        <Box
-          sx={{
-            width: isMobile ? '100%' : '400px',
-            flexShrink: 0
-          }}
-        >
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              height: '100%',
-              overflow: 'auto',
-              bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
+      {/* Main content with form and goal table */}
+      <Container 
+        maxWidth={false}
+        disableGutters
+        sx={{ 
+          px: 1,
+          py: 1,
+          display: 'flex', 
+          flexDirection: 'column', 
+          flex: 1 
+        }}
+      >
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: 2,
+          mb: 2
+        }}>
+          {/* Goal Form */}
+          <Box
+            sx={{
+              width: isMobile ? '100%' : '380px',
+              flexShrink: 5
             }}
           >
-            <GoalForm 
-              onSubmit={handleSubmit}
-              editingGoalId={editingGoalId}
-              editingGoal={editingGoal}
-              onCancelEdit={handleCancelEdit}
-              submitting={submitting}
-              currentWeight={currentWeight}
-              currentFatPercentage={currentFatPercentage}
-              selectedUserId={selectedUserId}
-            />
-          </Paper>
+            <Paper 
+              elevation={2}
+              sx={{ 
+                p: 0,
+                pt: 0,
+                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
+              }}
+            >
+              <GoalForm 
+                onSubmit={handleSubmit}
+                editingGoalId={editingGoalId}
+                editingGoal={editingGoal}
+                onCancelEdit={handleCancelEdit}
+                submitting={submitting}
+                currentWeight={currentWeight}
+                currentFatPercentage={currentFatPercentage}
+                selectedUserId={selectedUserId}
+              />
+            </Paper>
+          </Box>
+
+          {/* Goal Table */}
+          <Box sx={{ 
+            flex: 1, 
+            width: '100%'
+          }}>
+            <Paper 
+              elevation={2}
+              sx={{ 
+                p: 2.5,
+                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff',
+                height: '100%',
+                minHeight: '250px',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <GoalTable 
+                goals={goals}
+                loading={loadingGoals}
+                onEdit={handleEditGoal}
+                onDelete={handleDeleteGoal}
+                editingGoalId={editingGoalId}
+                currentWeight={currentWeight}
+                currentFatPercentage={currentFatPercentage}
+              />
+            </Paper>
+          </Box>
         </Box>
 
-        {!isMobile && (
-          <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                flex: 1,
-                overflow: 'auto',
-                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
-              }}
-            >
-              <GoalTable 
-                goals={goals}
-                loading={loadingGoals}
-                onEdit={handleEditGoal}
-                onDelete={handleDeleteGoal}
-                editingGoalId={editingGoalId}
-                currentWeight={currentWeight}
-                currentFatPercentage={currentFatPercentage}
-              />
-            </Paper>
-
-            <Paper
-              elevation={3}
-              sx={{
-                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
-              }}
-            >
-              <GoalGuidelines />
-            </Paper>
-          </Box>
-        )}
-
-        {isMobile && (
-          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Paper
-              elevation={3}
-              sx={{
-                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
-              }}
-            >
-              <GoalTable 
-                goals={goals}
-                loading={loadingGoals}
-                onEdit={handleEditGoal}
-                onDelete={handleDeleteGoal}
-                editingGoalId={editingGoalId}
-                currentWeight={currentWeight}
-                currentFatPercentage={currentFatPercentage}
-              />
-            </Paper>
-
-            <Paper
-              elevation={3}
-              sx={{
-                bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff'
-              }}
-            >
-              <GoalGuidelines />
-            </Paper>
-          </Box>
-        )}
-      </Box>
+        {/* Guidelines (outside scrollable area) */}
+        <Paper
+          elevation={2}
+          sx={{
+            p: 0,
+            bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : '#fff',
+            mt: 0
+          }}
+        >
+          <GoalGuidelines />
+        </Paper>
+      </Container>
 
       <Drawer
         anchor="right"
@@ -245,7 +234,7 @@ const Goals = () => {
           }
         }}
       >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ p: 0, display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton onClick={() => setGuidelinesOpen(false)}>
             <CloseIcon />
           </IconButton>

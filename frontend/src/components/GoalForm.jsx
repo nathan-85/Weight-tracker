@@ -329,7 +329,7 @@ const GoalForm = ({
         )}
       </Grid>
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 0 }}>
         {editingGoalId && (
           <Button
             variant="outlined"

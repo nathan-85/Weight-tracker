@@ -199,6 +199,7 @@ const GoalForm = ({
         value={targetDate}
         onChange={(newDate) => setTargetDate(newDate)}
         minDate={new Date()}
+        format="dd/MM/yyyy"
         slotProps={{ 
           textField: { 
             fullWidth: true,

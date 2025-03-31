@@ -38,7 +38,9 @@ import {
   Title,
   Tooltip as ChartTooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useUserContext } from '../contexts/UserContext';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -52,7 +54,8 @@ ChartJS.register(
   LineElement,
   Title,
   ChartTooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 const Dashboard = () => {
@@ -121,11 +124,22 @@ const Dashboard = () => {
 
     const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    const labels = sortedEntries.map(entry => format(new Date(entry.date), 'MMM d'));
+    const labels = sortedEntries.map(entry => new Date(entry.date));
     
-    const weightData = sortedEntries.map(entry => entry.weight);
-    const fatData = sortedEntries.map(entry => entry.fat_percentage);
-    const muscleData = sortedEntries.map(entry => entry.muscle_mass);
+    const weightData = sortedEntries.map(entry => ({
+      x: new Date(entry.date),
+      y: entry.weight
+    }));
+    
+    const fatData = sortedEntries.map(entry => ({
+      x: new Date(entry.date),
+      y: entry.fat_percentage
+    }));
+    
+    const muscleData = sortedEntries.map(entry => ({
+      x: new Date(entry.date),
+      y: entry.muscle_mass
+    }));
 
     return {
       labels,
@@ -210,9 +224,28 @@ const Dashboard = () => {
         },
       },
       x: {
-        ticks: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          displayFormats: {
+            day: 'dd MMM'
+          },
+          tooltipFormat: 'dd MMM yyyy'
+        },
+        title: {
+          display: true,
+          text: 'Date',
           color: darkMode ? '#ffffff' : undefined,
         },
+        ticks: {
+          color: darkMode ? '#ffffff' : undefined,
+          align: 'start',
+          source: 'data',
+          autoSkip: false,
+          maxRotation: 45,
+          minRotation: 0
+        },
+        bounds: 'data',
         grid: {
           color: darkMode ? 'rgba(255, 255, 255, 0.1)' : undefined,
         },

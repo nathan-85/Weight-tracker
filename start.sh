@@ -69,7 +69,7 @@ check_existing_processes() {
   BACKEND_PIDS=$(ps aux | grep "[p]ython.*run.py\|[f]lask" | awk '{print $2}')
   
   # Look for npm processes that might be our frontend
-  FRONTEND_PIDS=$(ps aux | grep "[n]pm.*start\|[n]ode.*weight.*tracker" | awk '{print $2}')
+  FRONTEND_PIDS=$(ps aux | grep "[n]pm.*start\|[n]ode.*weight.*tracker\|[n]ode.*react-scripts" | awk '{print $2}')
   
   if [ -n "$BACKEND_PIDS" ] && $START_BACKEND; then
     echo "Found existing backend process(es): $BACKEND_PIDS"
@@ -91,6 +91,28 @@ check_existing_processes() {
     done
     echo "Frontend processes terminated."
     sleep 1
+  fi
+
+  # Check if port 3939 is in use and kill that process
+  if $START_FRONTEND; then
+    PORT_PID=$(lsof -i:3939 -t 2>/dev/null)
+    if [ -n "$PORT_PID" ]; then
+      echo "Found process using port 3939: $PORT_PID"
+      kill -9 $PORT_PID 2>/dev/null
+      echo "Process on port 3939 terminated."
+      sleep 1
+    fi
+  fi
+
+  # Check if port 5001 is in use and kill that process
+  if $START_BACKEND; then
+    PORT_PID=$(lsof -i:5001 -t 2>/dev/null)
+    if [ -n "$PORT_PID" ]; then
+      echo "Found process using port 5001: $PORT_PID"
+      kill -9 $PORT_PID 2>/dev/null
+      echo "Process on port 5001 terminated."
+      sleep 1
+    fi
   fi
 }
 
@@ -147,42 +169,26 @@ if $START_FRONTEND; then
     exit 1
   fi
 
-  # Create temporary script to start frontend
-  cat > "$SCRIPT_DIR/temp_start_client.sh" << EOL
-#!/bin/bash
-cd "$FRONTEND_PATH"
-PORT=3939 npm start
-EOL
-  chmod +x "$SCRIPT_DIR/temp_start_client.sh"
+  # Start frontend in the same terminal as a background process instead of opening a new terminal
+  echo "Starting frontend in background (PORT=3939)..."
+  (cd "$FRONTEND_PATH" && PORT=3939 npm start) &
+  FRONTEND_PID=$!
+  echo "Frontend started with PID: $FRONTEND_PID"
+  
+  # Wait a moment for the frontend to initialize
+  echo "Waiting for frontend to initialize..."
+  sleep 3
 
-  # Open terminal based on detected OS
-  if [[ "$OSTYPE" == "darwin"* ]]; then  # macOS
-    open -a Terminal "$SCRIPT_DIR/temp_start_client.sh"
-  else  # Linux
-    # Try different terminal emulators
-    if command -v gnome-terminal &> /dev/null; then
-      gnome-terminal -- "$SCRIPT_DIR/temp_start_client.sh"
-    elif command -v xterm &> /dev/null; then
-      xterm -e "$SCRIPT_DIR/temp_start_client.sh"
-    else
-      echo "Could not find a suitable terminal emulator."
-      echo "Please start the frontend manually in another terminal with:"
-      echo "cd $FRONTEND_PATH && PORT=3939 npm start"
-    fi
-  fi
-
-  # Clean up the temporary script
-  sleep 1
-  rm "$SCRIPT_DIR/temp_start_client.sh"
-fi
-
-# Create a trap to clean up when script exits (only if running both)
-if $START_BACKEND && $START_FRONTEND; then
+  # Create a trap to clean up when script exits
   cleanup() {
     echo "Cleaning up and shutting down..."
     if kill -0 $BACKEND_PID 2>/dev/null; then
       echo "Stopping backend server (PID: $BACKEND_PID)..."
       kill $BACKEND_PID
+    fi
+    if kill -0 $FRONTEND_PID 2>/dev/null; then
+      echo "Stopping frontend server (PID: $FRONTEND_PID)..."
+      kill $FRONTEND_PID
     fi
     echo "Shutdown complete."
   }
@@ -192,11 +198,10 @@ if $START_BACKEND && $START_FRONTEND; then
   echo ""
   echo "Weight Tracker is running!"
   echo "- Backend is running on http://localhost:5001"
-  echo "- Frontend will be available at http://localhost:3939"
+  echo "- Frontend is running on http://localhost:3939"
   echo ""
-  echo "Press Ctrl+C to stop the backend server"
-  echo "(Frontend must be closed separately in its own terminal)"
+  echo "Press Ctrl+C to stop both servers"
 
   # Wait for user to press Ctrl+C
-  wait $BACKEND_PID
+  wait $BACKEND_PID $FRONTEND_PID
 fi 

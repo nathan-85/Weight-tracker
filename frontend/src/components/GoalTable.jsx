@@ -137,12 +137,12 @@ const GoalTable = ({
       <Table>
         <TableHead>
           <TableRow>
+            <TableCell>Description</TableCell>
             <TableCell>Start Date</TableCell>
             <TableCell>Target Date</TableCell>
             <TableCell align="right">Target Weight (kg)</TableCell>
             <TableCell align="right">Target Body Fat (%)</TableCell>
             <TableCell align="right">Target Muscle Mass (kg)</TableCell>
-            <TableCell>Description</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -186,6 +186,11 @@ const GoalTable = ({
               
               return (
                 <TableRow key={goal.id} hover selected={editingGoalId === goal.id}>
+
+              <TableCell>
+                    {goal.description || ''}
+                  </TableCell>
+
                   <TableCell>
                     {goal.start_date 
                       ? format(new Date(goal.start_date), 'MMM d, yyyy') 
@@ -226,10 +231,6 @@ const GoalTable = ({
                         {showChange(muscleChange, 'kg')}
                       </>
                     ) : 'N/A'}
-                  </TableCell>
-
-                  <TableCell>
-                    {goal.description || ''}
                   </TableCell>
                   
                   <TableCell align="right">

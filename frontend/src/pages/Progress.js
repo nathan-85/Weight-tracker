@@ -16,7 +16,7 @@ import {
   MenuItem,
   useTheme
 } from '@mui/material';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, eachDayOfInterval } from 'date-fns';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -32,6 +32,16 @@ import {
 import 'chartjs-adapter-date-fns';
 import { getEntries, getGoals, getProgress } from '../services/api';
 import { useUserContext } from '../contexts/UserContext';
+
+
+function interpolateY(start, end, x) {
+  const startTime = start.x.getTime();
+  const endTime = end.x.getTime();
+  const xTime = x; // Already a timestamp from parsed.x
+  if (startTime === endTime) return start.y; // Avoid division by zero
+  const ratio = (xTime - startTime) / (endTime - startTime);
+  return start.y + ratio * (end.y - start.y);
+}
 
 // Register ChartJS components
 ChartJS.register(
@@ -137,23 +147,24 @@ const ProgressSummary = ({ progress }) => (
 const prepareProjectionData = (metric, entries, goals, selectedGoal) => {
   if (!entries.length || !goals.length || !selectedGoal) return null;
 
-  const goal = goals.find(g => g.id === selectedGoal);
+  const goal = goals.find((g) => g.id === selectedGoal);
   if (!goal) return null;
 
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
   const latestEntry = sortedEntries[sortedEntries.length - 1];
   const startDate = goal.start_date ? new Date(goal.start_date) : new Date(latestEntry.date);
   const targetDate = new Date(goal.target_date);
-  const relevantEntries = sortedEntries.filter(entry => 
-    new Date(entry.date) >= startDate && new Date(entry.date) <= new Date(latestEntry.date)
+  const relevantEntries = sortedEntries.filter(
+    (entry) =>
+      new Date(entry.date) >= startDate && new Date(entry.date) <= new Date(latestEntry.date)
   );
 
   if (relevantEntries.length === 0) return null;
 
   const metricMap = {
-    weight: entry => entry.weight,
-    fat: entry => entry.fat_percentage,
-    muscle: entry => entry.muscle_mass
+    weight: (entry) => entry.weight,
+    fat: (entry) => entry.fat_percentage,
+    muscle: (entry) => entry.muscle_mass,
   };
   const getMetricValue = metricMap[metric];
   if (!getMetricValue) return null;
@@ -161,7 +172,7 @@ const prepareProjectionData = (metric, entries, goals, selectedGoal) => {
   const targetKeyMap = {
     weight: 'target_weight',
     fat: 'target_fat_percentage',
-    muscle: 'target_muscle_mass'
+    muscle: 'target_muscle_mass',
   };
   const targetKey = targetKeyMap[metric];
   if (!targetKey) return null;
@@ -170,25 +181,36 @@ const prepareProjectionData = (metric, entries, goals, selectedGoal) => {
 
   const earliestEntry = relevantEntries[0];
   const startValue = getMetricValue(earliestEntry);
-  
+
+  // Generate daily points for Required Progress
+  const requiredDates = eachDayOfInterval({ start: startDate, end: targetDate });
+  const requiredData = requiredDates.map((date) => {
+    const daysFromStart = differenceInDays(date, startDate);
+    const totalDays = differenceInDays(targetDate, startDate);
+    const ratio = totalDays > 0 ? daysFromStart / totalDays : 0;
+    const y = startValue + ratio * (targetValue - startValue);
+    return { x: date, y };
+  });
+
   return {
     datasets: [
       {
         label: 'Actual Progress',
-        data: relevantEntries.map(entry => ({ x: new Date(entry.date), y: getMetricValue(entry) })),
+        data: relevantEntries.map((entry) => ({
+          x: new Date(entry.date),
+          y: getMetricValue(entry),
+        })),
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.5)',
         pointRadius: 6,
       },
       {
         label: 'Required Progress',
-        data: [
-          { x: startDate, y: startValue },
-          { x: targetDate, y: targetValue },
-        ],
+        data: requiredData,
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.5)',
         borderDash: [5, 5],
+        pointRadius: 0, // Hide points, show only the line
       },
     ],
   };
@@ -252,61 +274,110 @@ const prepareAllProjectionData = (entries, goals, selectedGoal) => {
 // Chart Components
 const ProjectionChart = ({ metric, entries, goals, selectedGoal }) => {
   const theme = useTheme();
-  const chartData = useMemo(() => prepareProjectionData(metric, entries, goals, selectedGoal), [metric, entries, goals, selectedGoal]);
+  const chartData = useMemo(
+    () => prepareProjectionData(metric, entries, goals, selectedGoal),
+    [metric, entries, goals, selectedGoal]
+  );
   const unit = metric === 'fat' ? '%' : 'kg';
-  const options = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Projection`, color: theme.palette.mode === 'dark' ? '#fff' : '#000' },
-      tooltip: {
-        callbacks: {
-          label: context => `${context.dataset.label}: ${context.parsed.y?.toFixed(1)} ${unit}`,
+  const options = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'x',
+        intersect: false,
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Projection`,
+          color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              const unit = metric === 'fat' ? '%' : 'kg'; // Fixed typo 'kgg' to 'kg'
+              return `${label}: ${value.toFixed(1)} ${unit}`;
+            },
+          },
+        },
+        legend: {
+          display: true,
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 12,
+            padding: 20,
+            font: { size: 12 },
+            color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+          },
+          onClick: (e, legendItem, legend) => {
+            const index = legendItem.datasetIndex;
+            const ci = legend.chart;
+            const meta = ci.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+
+            ci.data.datasets.forEach((dataset, i) => {
+              const meta = ci.getDatasetMeta(i);
+              dataset.originalBorderColor = dataset.originalBorderColor || dataset.borderColor;
+              dataset.originalBackgroundColor =
+                dataset.originalBackgroundColor || dataset.backgroundColor;
+              dataset.borderColor = meta.hidden
+                ? desaturateColor(dataset.originalBorderColor)
+                : dataset.originalBorderColor;
+              dataset.backgroundColor = meta.hidden
+                ? desaturateColor(dataset.originalBackgroundColor)
+                : dataset.originalBackgroundColor;
+            });
+
+            ci.update();
+          },
         },
       },
-      legend: {
-        display: true,
-        labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 12, padding: 20, font: { size: 12 }, color: theme.palette.mode === 'dark' ? '#fff' : '#000' },
-        onClick: (e, legendItem, legend) => {
-          const index = legendItem.datasetIndex;
-          const ci = legend.chart;
-          const meta = ci.getDatasetMeta(index);
-          meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
-
-          ci.data.datasets.forEach((dataset, i) => {
-            const meta = ci.getDatasetMeta(i);
-            dataset.originalBorderColor = dataset.originalBorderColor || dataset.borderColor;
-            dataset.originalBackgroundColor = dataset.originalBackgroundColor || dataset.backgroundColor;
-            dataset.borderColor = meta.hidden ? desaturateColor(dataset.originalBorderColor) : dataset.originalBorderColor;
-            dataset.backgroundColor = meta.hidden ? desaturateColor(dataset.originalBackgroundColor) : dataset.originalBackgroundColor;
-          });
-
-          ci.update();
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM yyyy' },
+          title: {
+            display: true,
+            text: 'Date',
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+          },
+          grid: {
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          },
+          ticks: {
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            text: unit,
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+          },
+          grid: {
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          },
+          ticks: {
+            color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+          },
         },
       },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM yyyy' },
-        title: { display: true, text: 'Date', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' },
-        grid: { color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
-        ticks: { color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' },
-      },
-      y: {
-        title: { display: true, text: unit, color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' },
-        grid: { color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
-        ticks: { color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' },
-      },
-    },
-  }), [metric, unit, theme]);
+    }),
+    [metric, unit, theme]
+  );
 
   return chartData ? (
     <Box sx={{ height: 400 }}>
       <Line options={options} data={chartData} />
     </Box>
   ) : (
-    <Typography variant="body1" align="center" sx={{ pt: 8 }}>Insufficient data to display chart</Typography>
+    <Typography variant="body1" align="center" sx={{ pt: 8 }}>
+      Insufficient data to display chart
+    </Typography>
   );
 };
 

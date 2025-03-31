@@ -65,16 +65,23 @@ class Goal(db.Model):
     target_weight = db.Column(db.Float)
     target_fat_percentage = db.Column(db.Float)
     target_muscle_mass = db.Column(db.Float)
+    description = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
+    start_date = db.Column(db.DateTime, nullable=True)  # Start date for goal tracking
 
     def to_dict(self):
+        # If start_date is None, use created_at as fallback
+        start_date_value = self.start_date if self.start_date else self.created_at
+        
         return {
             'id': self.id,
             'target_date': self.target_date.strftime('%Y-%m-%d'),
             'target_weight': self.target_weight,
             'target_fat_percentage': self.target_fat_percentage,
             'target_muscle_mass': self.target_muscle_mass,
+            'description': self.description if self.description is not None else '',
             'created_at': self.created_at.strftime('%Y-%m-%d'),
-            'user_id': self.user_id
+            'user_id': self.user_id,
+            'start_date': start_date_value.strftime('%Y-%m-%d')
         }

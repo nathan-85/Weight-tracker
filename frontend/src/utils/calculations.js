@@ -1,5 +1,11 @@
 import { differenceInDays } from 'date-fns';
 
+// Configuration values for goal change thresholds
+export const GOAL_THRESHOLDS = {
+  CAUTION_MULTIPLIER: 1.25, // Yellow warning at 1.25x the recommended max
+  EXTREME_MULTIPLIER: 1.5   // Red warning at 1.5x the recommended max
+};
+
 export const calculateMuscleMass = (weight, fatPercentage) => {
   if (!weight || !fatPercentage) return null;
   

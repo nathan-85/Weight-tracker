@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 # Debug mode flag - standardize the check
-DEBUG_MODE = os.environ.get('DEBUG_MODE', 'False').lower() in ('true', '1', 't')
+DEBUG_MODE = True  # Force debug mode to be True for debugging
 
 # Initialize logging
 log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
@@ -12,7 +12,7 @@ log_file = os.path.join(log_dir, 'app.log')
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Set to DEBUG to capture all messages
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(log_file),

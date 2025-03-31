@@ -6,6 +6,7 @@ import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/st
 import CssBaseline from '@mui/material/CssBaseline';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { useThemeContext } from './contexts/ThemeContext';
 
 // Theme wrapper component to apply dark/light mode
@@ -91,7 +92,9 @@ root.render(
   <React.StrictMode>
     <UserProvider>
       <ThemeProvider>
-        <ThemedApp />
+        <SettingsProvider>
+          <ThemedApp />
+        </SettingsProvider>
       </ThemeProvider>
     </UserProvider>
   </React.StrictMode>

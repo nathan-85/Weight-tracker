@@ -1,27 +1,49 @@
 import { useState, useEffect } from 'react';
+import { getEntries } from '../services/api';
 
 export const useMeasurements = (selectedUserId) => {
-  const [currentWeight, setCurrentWeight] = useState(80); // Default mock value
-  const [currentFatPercentage, setCurrentFatPercentage] = useState(20); // Default mock value
+  const [currentWeight, setCurrentWeight] = useState(null);
+  const [currentFatPercentage, setCurrentFatPercentage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchLatestMeasurements = async (userId) => {
     if (!userId) return;
     
     try {
-      // For testing, using mock values
-      // TODO: Replace with actual API call when available
-      // const response = await fetch(`/api/entries/user/${userId}/latest`);
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setCurrentWeight(data.weight);
-      //   setCurrentFatPercentage(data.fat_percentage);
-      // }
+      setLoading(true);
+      setError(null);
       
-      // Using mock data for now to ensure the feature works
-      setCurrentWeight(80);
-      setCurrentFatPercentage(20);
+      // Get all entries for the user
+      const entries = await getEntries(userId);
+      
+      if (entries && entries.length > 0) {
+        // Sort entries by date (newest first)
+        const sortedEntries = entries.sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        );
+        
+        // Get the most recent entry
+        const latestEntry = sortedEntries[0];
+        
+        if (latestEntry) {
+          setCurrentWeight(latestEntry.weight);
+          setCurrentFatPercentage(latestEntry.fat_percentage);
+        } else {
+          console.warn('No measurement entries found for this user');
+        }
+      } else {
+        console.warn('No measurement entries found for this user');
+      }
     } catch (err) {
       console.error('Failed to fetch latest measurements:', err);
+      setError('Failed to load current measurements. Using default values.');
+      
+      // Fallback to reasonable defaults if no data is available
+      setCurrentWeight(80);
+      setCurrentFatPercentage(20);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,6 +55,8 @@ export const useMeasurements = (selectedUserId) => {
 
   return {
     currentWeight,
-    currentFatPercentage
+    currentFatPercentage,
+    loading,
+    error
   };
 }; 

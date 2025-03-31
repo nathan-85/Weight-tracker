@@ -26,7 +26,9 @@ import {
   Title,
   Tooltip as ChartTooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 import { getEntries, getGoals, getProgress } from '../services/api';
 import { useUserContext } from '../contexts/UserContext';
 
@@ -38,7 +40,8 @@ ChartJS.register(
   LineElement,
   Title,
   ChartTooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 // Format date in Australian format (dd/MM/yyyy)
@@ -161,7 +164,7 @@ const Progress = () => {
     const requiredProgressData = [];
     
     // Add the start date as the starting point
-    labels.push(format(startDate, 'dd/MM'));
+    labels.push(startDate);
     
     // If start date is latestEntry date, use current value, otherwise use null (no actual data)
     if (format(startDate, 'yyyy-MM-dd') === format(new Date(latestEntry.date), 'yyyy-MM-dd')) {
@@ -180,7 +183,7 @@ const Progress = () => {
     
     // Add latest entry as a point if it's not the start date
     if (format(startDate, 'yyyy-MM-dd') !== format(new Date(latestEntry.date), 'yyyy-MM-dd')) {
-      labels.push(format(new Date(latestEntry.date), 'dd/MM'));
+      labels.push(new Date(latestEntry.date));
       actualData.push(currentValue);
       
       // Calculate what the value should be at latest entry date based on linear progression from start to target
@@ -190,7 +193,7 @@ const Progress = () => {
     }
     
     // Add the goal date as the end point
-    labels.push(format(new Date(goal.target_date), 'dd/MM'));
+    labels.push(new Date(goal.target_date));
     actualData.push(null); // We don't have actual data for the future
     requiredProgressData.push(targetValue);
     
@@ -285,6 +288,20 @@ const Progress = () => {
         }
       },
       scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: 'day',
+            displayFormats: {
+              day: 'dd MMM'
+            },
+            tooltipFormat: 'dd MMM yyyy'
+          },
+          title: {
+            display: true,
+            text: 'Date'
+          }
+        },
         y: {
           title: {
             display: true,
@@ -525,30 +542,24 @@ const Progress = () => {
                       );
                     }
 
-                    // Combine all datasets
                     // We need to create a merged set of labels to accommodate all data points
                     const allLabels = [...new Set([
-                      ...weightData.labels,
-                      ...fatData.labels,
-                      ...muscleData.labels
-                    ])].sort((a, b) => {
-                      // Parse the DD/MM format to Date objects for correct sorting
-                      const [dayA, monthA] = a.split('/').map(Number);
-                      const [dayB, monthB] = b.split('/').map(Number);
-                      
-                      // Create Date objects with current year (doesn't matter which year)
-                      const dateA = new Date(new Date().getFullYear(), monthA - 1, dayA);
-                      const dateB = new Date(new Date().getFullYear(), monthB - 1, dayB);
-                      
-                      return dateA - dateB;
-                    });
+                      ...weightData.labels.map(date => date.toISOString()),
+                      ...fatData.labels.map(date => date.toISOString()),
+                      ...muscleData.labels.map(date => date.toISOString())
+                    ])].sort().map(dateStr => new Date(dateStr));
                     
                     // Helper function to map original data to new label indices
                     const mapDataToLabels = (sourceLabels, sourceData, targetLabels) => {
                       const result = Array(targetLabels.length).fill(null);
                       
                       for (let i = 0; i < sourceLabels.length; i++) {
-                        const targetIndex = targetLabels.indexOf(sourceLabels[i]);
+                        // Find matching date by comparing ISO string formats
+                        const sourceDate = sourceLabels[i].toISOString();
+                        const targetIndex = targetLabels.findIndex(date => 
+                          date.toISOString() === sourceDate
+                        );
+                        
                         if (targetIndex !== -1) {
                           result[targetIndex] = sourceData[i];
                         }
@@ -681,6 +692,20 @@ const Progress = () => {
                         }
                       },
                       scales: {
+                        x: {
+                          type: 'time',
+                          time: {
+                            unit: 'day',
+                            displayFormats: {
+                              day: 'dd MMM'
+                            },
+                            tooltipFormat: 'dd MMM yyyy'
+                          },
+                          title: {
+                            display: true,
+                            text: 'Date'
+                          }
+                        },
                         y1: {
                           type: 'linear',
                           display: true,

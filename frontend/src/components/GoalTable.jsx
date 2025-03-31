@@ -137,6 +137,7 @@ const GoalTable = ({
       <Table>
         <TableHead>
           <TableRow>
+            <TableCell>Start Date</TableCell>
             <TableCell>Target Date</TableCell>
             <TableCell align="right">Target Weight (kg)</TableCell>
             <TableCell align="right">Target Body Fat (%)</TableCell>
@@ -150,6 +151,9 @@ const GoalTable = ({
             .sort((a, b) => new Date(a.target_date) - new Date(b.target_date))
             .map((goal) => {
               const daysRemaining = differenceInDays(new Date(goal.target_date), new Date());
+              const totalDays = differenceInDays(new Date(goal.target_date), new Date(goal.start_date || goal.created_at));
+              const daysElapsed = differenceInDays(new Date(), new Date(goal.start_date || goal.created_at));
+              const progressPercentage = totalDays > 0 ? Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100)) : 0;
               
               // Calculate required weekly changes
               let weightChange = null;
@@ -183,12 +187,18 @@ const GoalTable = ({
               return (
                 <TableRow key={goal.id} hover selected={editingGoalId === goal.id}>
                   <TableCell>
+                    {goal.start_date 
+                      ? format(new Date(goal.start_date), 'MMM d, yyyy') 
+                      : format(new Date(goal.created_at), 'MMM d, yyyy')}
+                  </TableCell>
+                
+                  <TableCell>
                     {format(new Date(goal.target_date), 'MMM d, yyyy')}
-                    {daysRemaining > 0 && (
-                      <Typography variant="caption" display="block" color="textSecondary">
-                        {daysRemaining} days remaining
-                      </Typography>
-                    )}
+                    <Typography variant="caption" display="block" color="textSecondary">
+                      {daysRemaining > 0 
+                        ? `${daysRemaining} days remaining (${progressPercentage.toFixed(0)}% elapsed)` 
+                        : 'Goal period ended'}
+                    </Typography>
                   </TableCell>
                   
                   <TableCell align="right">

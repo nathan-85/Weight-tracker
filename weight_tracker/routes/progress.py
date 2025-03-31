@@ -24,7 +24,12 @@ def get_progress():
         results = []
         
         for goal in goals:
-            # Calculate days between latest entry and goal
+            # Use start_date if available, otherwise use latest entry date
+            start_date = goal.start_date if goal.start_date else latest_entry.date
+            
+            # Calculate days between start date, current date, and target date
+            total_days = (goal.target_date - start_date).days
+            days_elapsed = (latest_entry.date - start_date).days
             days_remaining = (goal.target_date - latest_entry.date).days
             
             if days_remaining <= 0:
@@ -32,10 +37,17 @@ def get_progress():
                 logger.debug(f"Skipping goal ID {goal.id} as target date has passed")
                 continue
             
+            # Calculate progress percentage
+            progress_percentage = (days_elapsed / total_days * 100) if total_days > 0 else 0
+            
             result = {
                 'goal_id': goal.id,
                 'target_date': goal.target_date.strftime('%Y-%m-%d'),
+                'start_date': goal.start_date.strftime('%Y-%m-%d') if goal.start_date else None,
                 'days_remaining': days_remaining,
+                'days_elapsed': days_elapsed,
+                'total_days': total_days,
+                'progress_percentage': progress_percentage,
                 'weight': {
                     'current': latest_entry.weight,
                     'target': goal.target_weight,
@@ -84,7 +96,12 @@ def get_user_progress(user_id):
         results = []
         
         for goal in goals:
-            # Calculate days between latest entry and goal
+            # Use start_date if available, otherwise use latest entry date
+            start_date = goal.start_date if goal.start_date else latest_entry.date
+            
+            # Calculate days between start date, current date, and target date
+            total_days = (goal.target_date - start_date).days
+            days_elapsed = (latest_entry.date - start_date).days
             days_remaining = (goal.target_date - latest_entry.date).days
             
             if days_remaining <= 0:
@@ -92,10 +109,17 @@ def get_user_progress(user_id):
                 logger.debug(f"Skipping goal ID {goal.id} as target date has passed")
                 continue
             
+            # Calculate progress percentage
+            progress_percentage = (days_elapsed / total_days * 100) if total_days > 0 else 0
+            
             result = {
                 'goal_id': goal.id,
                 'target_date': goal.target_date.strftime('%Y-%m-%d'),
+                'start_date': goal.start_date.strftime('%Y-%m-%d') if goal.start_date else None,
                 'days_remaining': days_remaining,
+                'days_elapsed': days_elapsed,
+                'total_days': total_days,
+                'progress_percentage': progress_percentage,
                 'weight': {
                     'current': latest_entry.weight,
                     'target': goal.target_weight,

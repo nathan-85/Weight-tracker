@@ -33,6 +33,7 @@ const GoalForm = ({
 }) => {
   const theme = useTheme();
   const [targetDate, setTargetDate] = useState(addMonths(new Date(), 3));
+  const [startDate, setStartDate] = useState(new Date());
   const [targetWeight, setTargetWeight] = useState('');
   const [targetFatPercentage, setTargetFatPercentage] = useState('');
   const [description, setDescription] = useState('');
@@ -42,6 +43,10 @@ const GoalForm = ({
     if (editingGoal) {
       if (editingGoal.target_date) {
         setTargetDate(new Date(editingGoal.target_date));
+      }
+      
+      if (editingGoal.start_date) {
+        setStartDate(new Date(editingGoal.start_date));
       }
       
       if (editingGoal.target_weight !== null && editingGoal.target_weight !== undefined) {
@@ -62,6 +67,7 @@ const GoalForm = ({
     setTargetWeight('');
     setTargetFatPercentage('');
     setTargetDate(addMonths(new Date(), 3));
+    setStartDate(new Date());
     setDescription('');
   };
 
@@ -79,14 +85,20 @@ const GoalForm = ({
     // Calculate the target muscle mass if we have both weight and fat percentage
     const targetMuscleMass = calculateMuscleMass(targetWeight, targetFatPercentage);
     
+    console.log("Form submission - Start Date:", startDate);
+    console.log("Form submission - Start Date ISO:", startDate.toISOString().split('T')[0]);
+    
     const goalData = {
       target_date: targetDate.toISOString().split('T')[0],
+      start_date: startDate.toISOString().split('T')[0],
       target_weight: targetWeight ? parseFloat(targetWeight) : null,
       target_fat_percentage: targetFatPercentage ? parseFloat(targetFatPercentage) : null,
       target_muscle_mass: targetMuscleMass,
       description: description,
       user_id: selectedUserId
     };
+    
+    console.log("Submitting goal data:", goalData);
     
     const success = await onSubmit(editingGoalId, goalData);
     
@@ -194,23 +206,45 @@ const GoalForm = ({
         }}
       />
       
-      <DatePicker
-        label="Target Date"
-        value={targetDate}
-        onChange={(newDate) => setTargetDate(newDate)}
-        minDate={new Date()}
-        format="dd/MM/yyyy"
-        slotProps={{ 
-          textField: { 
-            fullWidth: true,
-            sx: {
-              '& .MuiOutlinedInput-root': {
-                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
-              }
-            }
-          } 
-        }}
-      />
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <DatePicker
+            label="Start Date"
+            value={startDate}
+            onChange={(newDate) => setStartDate(newDate)}
+            format="dd/MM/yyyy"
+            slotProps={{ 
+              textField: { 
+                fullWidth: true,
+                sx: {
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+                  }
+                }
+              } 
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <DatePicker
+            label="Target Date"
+            value={targetDate}
+            onChange={(newDate) => setTargetDate(newDate)}
+            minDate={startDate}
+            format="dd/MM/yyyy"
+            slotProps={{ 
+              textField: { 
+                fullWidth: true,
+                sx: {
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+                  }
+                }
+              } 
+            }}
+          />
+        </Grid>
+      </Grid>
       
       <Grid container spacing={2} sx={{ '& > .MuiGrid-item': { pb: 0 } }}>
         <Grid item xs={12}>

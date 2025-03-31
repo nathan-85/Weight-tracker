@@ -148,8 +148,11 @@ const Progress = () => {
     
     if (!currentValue || !targetValue) return null;
     
-    // Calculate days between latest entry and goal
-    const daysTotal = differenceInDays(new Date(goal.target_date), new Date(latestEntry.date));
+    // Use goal start_date as the starting point for the chart
+    const startDate = goal.start_date ? new Date(goal.start_date) : new Date(latestEntry.date);
+    
+    // Calculate days between start date and goal target date
+    const daysTotal = differenceInDays(new Date(goal.target_date), startDate);
     if (daysTotal <= 0) return null;
     
     // Generate projection data points
@@ -157,10 +160,34 @@ const Progress = () => {
     const actualData = [];
     const requiredProgressData = [];
     
-    // Add the latest entry as the starting point
-    labels.push(format(new Date(latestEntry.date), 'dd/MM'));
-    actualData.push(currentValue);
-    requiredProgressData.push(currentValue);
+    // Add the start date as the starting point
+    labels.push(format(startDate, 'dd/MM'));
+    
+    // If start date is latestEntry date, use current value, otherwise use null (no actual data)
+    if (format(startDate, 'yyyy-MM-dd') === format(new Date(latestEntry.date), 'yyyy-MM-dd')) {
+      actualData.push(currentValue);
+    } else {
+      actualData.push(null); // No actual data for the start date if it's not the latest entry
+    }
+    
+    // For required progress, we need to calculate what the value should have been at start date
+    // by extrapolating backward from target to current, or just use current value if start = latest
+    const dailyChangeRequired = (targetValue - currentValue) / differenceInDays(new Date(goal.target_date), new Date(latestEntry.date));
+    const daysFromStartToLatest = differenceInDays(new Date(latestEntry.date), startDate);
+    const startValue = currentValue - (dailyChangeRequired * daysFromStartToLatest);
+    
+    requiredProgressData.push(startValue);
+    
+    // Add latest entry as a point if it's not the start date
+    if (format(startDate, 'yyyy-MM-dd') !== format(new Date(latestEntry.date), 'yyyy-MM-dd')) {
+      labels.push(format(new Date(latestEntry.date), 'dd/MM'));
+      actualData.push(currentValue);
+      
+      // Calculate what the value should be at latest entry date based on linear progression from start to target
+      const daysFromStartToLatest = differenceInDays(new Date(latestEntry.date), startDate);
+      const idealValueAtLatest = startValue + (daysFromStartToLatest / daysTotal) * (targetValue - startValue);
+      requiredProgressData.push(idealValueAtLatest);
+    }
     
     // Add the goal date as the end point
     labels.push(format(new Date(goal.target_date), 'dd/MM'));
@@ -274,7 +301,7 @@ const Progress = () => {
     if (colorStr.startsWith('rgba')) {
       const matches = colorStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
       if (matches) {
-        const [_, r, g, b, a] = matches;
+        const [r, g, b, a] = matches;
         // Calculate grayscale value (weighted average for proper luminance)
         const gray = Math.round(0.299 * parseInt(r) + 0.587 * parseInt(g) + 0.114 * parseInt(b));
         return `rgba(${gray}, ${gray}, ${gray}, ${a})`;
@@ -284,7 +311,7 @@ const Progress = () => {
     if (colorStr.startsWith('rgb')) {
       const matches = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
       if (matches) {
-        const [_, r, g, b] = matches;
+        const [r, g, b] = matches;
         // Calculate grayscale value (weighted average for proper luminance)
         const gray = Math.round(0.299 * parseInt(r) + 0.587 * parseInt(g) + 0.114 * parseInt(b));
         return `rgb(${gray}, ${gray}, ${gray})`;
@@ -499,12 +526,43 @@ const Progress = () => {
                     }
 
                     // Combine all datasets
+                    // We need to create a merged set of labels to accommodate all data points
+                    const allLabels = [...new Set([
+                      ...weightData.labels,
+                      ...fatData.labels,
+                      ...muscleData.labels
+                    ])].sort((a, b) => {
+                      // Parse the DD/MM format to Date objects for correct sorting
+                      const [dayA, monthA] = a.split('/').map(Number);
+                      const [dayB, monthB] = b.split('/').map(Number);
+                      
+                      // Create Date objects with current year (doesn't matter which year)
+                      const dateA = new Date(new Date().getFullYear(), monthA - 1, dayA);
+                      const dateB = new Date(new Date().getFullYear(), monthB - 1, dayB);
+                      
+                      return dateA - dateB;
+                    });
+                    
+                    // Helper function to map original data to new label indices
+                    const mapDataToLabels = (sourceLabels, sourceData, targetLabels) => {
+                      const result = Array(targetLabels.length).fill(null);
+                      
+                      for (let i = 0; i < sourceLabels.length; i++) {
+                        const targetIndex = targetLabels.indexOf(sourceLabels[i]);
+                        if (targetIndex !== -1) {
+                          result[targetIndex] = sourceData[i];
+                        }
+                      }
+                      
+                      return result;
+                    };
+                    
                     const combinedData = {
-                      labels: weightData.labels,
+                      labels: allLabels,
                       datasets: [
                         {
                           label: 'Weight (kg)',
-                          data: weightData.datasets[0].data,
+                          data: mapDataToLabels(weightData.labels, weightData.datasets[0].data, allLabels),
                           borderColor: 'rgb(75, 192, 192)',
                           backgroundColor: 'rgba(75, 192, 192, 0.5)',
                           pointRadius: 6,
@@ -512,7 +570,7 @@ const Progress = () => {
                         },
                         {
                           label: 'Weight Target',
-                          data: weightData.datasets[1].data,
+                          data: mapDataToLabels(weightData.labels, weightData.datasets[1].data, allLabels),
                           borderColor: 'rgb(75, 192, 192)',
                           backgroundColor: 'rgba(75, 192, 192, 0.5)',
                           borderDash: [5, 5],
@@ -520,7 +578,7 @@ const Progress = () => {
                         },
                         {
                           label: 'Body Fat (%)',
-                          data: fatData.datasets[0].data,
+                          data: mapDataToLabels(fatData.labels, fatData.datasets[0].data, allLabels),
                           borderColor: 'rgb(255, 99, 132)',
                           backgroundColor: 'rgba(255, 99, 132, 0.5)',
                           pointRadius: 6,
@@ -528,7 +586,7 @@ const Progress = () => {
                         },
                         {
                           label: 'Body Fat Target',
-                          data: fatData.datasets[1].data,
+                          data: mapDataToLabels(fatData.labels, fatData.datasets[1].data, allLabels),
                           borderColor: 'rgb(255, 99, 132)',
                           backgroundColor: 'rgba(255, 99, 132, 0.5)',
                           borderDash: [5, 5],
@@ -536,7 +594,7 @@ const Progress = () => {
                         },
                         {
                           label: 'Muscle Mass (kg)',
-                          data: muscleData.datasets[0].data,
+                          data: mapDataToLabels(muscleData.labels, muscleData.datasets[0].data, allLabels),
                           borderColor: 'rgb(54, 162, 235)',
                           backgroundColor: 'rgba(54, 162, 235, 0.5)',
                           pointRadius: 6,
@@ -544,7 +602,7 @@ const Progress = () => {
                         },
                         {
                           label: 'Muscle Mass Target',
-                          data: muscleData.datasets[1].data,
+                          data: mapDataToLabels(muscleData.labels, muscleData.datasets[1].data, allLabels),
                           borderColor: 'rgb(54, 162, 235)',
                           backgroundColor: 'rgba(54, 162, 235, 0.5)',
                           borderDash: [5, 5],

@@ -13,7 +13,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  useTheme
 } from '@mui/material';
 import { format, differenceInDays } from 'date-fns';
 import { Line } from 'react-chartjs-2';
@@ -59,6 +60,8 @@ const formatGoalName = (goal) => {
 
 const Progress = () => {
   const { currentUser } = useUserContext();
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const [entries, setEntries] = useState([]);
   const [goals, setGoals] = useState([]);
   const [progress, setProgress] = useState(null);
@@ -219,6 +222,10 @@ const Progress = () => {
   };
 
   const chartOptions = (title, unit) => {
+    // Get colors based on theme
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)';
+    
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -226,6 +233,7 @@ const Progress = () => {
         title: {
           display: true,
           text: title,
+          color: isDarkMode ? '#fff' : '#000'
         },
         tooltip: {
           callbacks: {
@@ -250,7 +258,8 @@ const Progress = () => {
             padding: 20,
             font: {
               size: 12
-            }
+            },
+            color: isDarkMode ? '#fff' : '#000'
           },
           onClick: function(e, legendItem, legend) {
             const index = legendItem.datasetIndex;
@@ -299,13 +308,27 @@ const Progress = () => {
           },
           title: {
             display: true,
-            text: 'Date'
+            text: 'Date',
+            color: textColor
+          },
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor
           }
         },
         y: {
           title: {
             display: true,
             text: unit,
+            color: textColor
+          },
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor
           }
         }
       }
@@ -629,6 +652,7 @@ const Progress = () => {
                         title: {
                           display: true,
                           text: 'All Metrics Projection',
+                          color: isDarkMode ? '#fff' : '#000'
                         },
                         tooltip: {
                           callbacks: {
@@ -654,7 +678,8 @@ const Progress = () => {
                               size: 12
                             },
                             usePointStyle: true,
-                            pointStyle: 'circle'
+                            pointStyle: 'circle',
+                            color: isDarkMode ? '#fff' : '#000'
                           },
                           onClick: function(e, legendItem, legend) {
                             const index = legendItem.datasetIndex;
@@ -703,7 +728,14 @@ const Progress = () => {
                           },
                           title: {
                             display: true,
-                            text: 'Date'
+                            text: 'Date',
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
+                          },
+                          grid: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                          },
+                          ticks: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
                           }
                         },
                         y1: {
@@ -713,7 +745,14 @@ const Progress = () => {
                           title: {
                             display: true,
                             text: 'Weight (kg)',
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
                           },
+                          grid: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                          },
+                          ticks: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
+                          }
                         },
                         y2: {
                           type: 'linear',
@@ -722,10 +761,15 @@ const Progress = () => {
                           title: {
                             display: true,
                             text: 'Body Fat (%)',
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
                           },
                           grid: {
                             drawOnChartArea: false,
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
                           },
+                          ticks: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
+                          }
                         },
                         y3: {
                           type: 'linear',
@@ -734,7 +778,15 @@ const Progress = () => {
                           title: {
                             display: true,
                             text: 'Muscle Mass (kg)',
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
                           },
+                          grid: {
+                            drawOnChartArea: false,
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                          },
+                          ticks: {
+                            color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)'
+                          }
                         },
                       },
                     };

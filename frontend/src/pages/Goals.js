@@ -78,7 +78,8 @@ const Goals = () => {
       target_fat_percentage: goal.target_fat_percentage,
       target_muscle_mass: goal.target_muscle_mass,
       description: goal.description,
-      user_id: goal.user_id
+      user_id: goal.user_id,
+      start_date: goal.start_date
     });
   };
 

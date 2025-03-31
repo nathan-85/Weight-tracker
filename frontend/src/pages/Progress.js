@@ -210,6 +210,51 @@ const Progress = () => {
               return label;
             }
           }
+        },
+        legend: {
+          display: true,
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 12,
+            padding: 20,
+            font: {
+              size: 12
+            }
+          },
+          onClick: function(e, legendItem, legend) {
+            const index = legendItem.datasetIndex;
+            const ci = legend.chart;
+            
+            // Toggle visibility
+            const meta = ci.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+            
+            // Apply desaturation to deselected datasets
+            ci.data.datasets.forEach((dataset, i) => {
+              const meta = ci.getDatasetMeta(i);
+              
+              // Store original colors on first encounter if not already stored
+              if (!dataset.originalBorderColor) {
+                dataset.originalBorderColor = dataset.borderColor;
+              }
+              if (!dataset.originalBackgroundColor) {
+                dataset.originalBackgroundColor = dataset.backgroundColor;
+              }
+              
+              if (meta.hidden) {
+                // Desaturate the color if hidden
+                dataset.borderColor = desaturateColor(dataset.originalBorderColor);
+                dataset.backgroundColor = desaturateColor(dataset.originalBackgroundColor);
+              } else {
+                // Restore original color if not hidden
+                dataset.borderColor = dataset.originalBorderColor;
+                dataset.backgroundColor = dataset.originalBackgroundColor;
+              }
+            });
+            
+            ci.update();
+          }
         }
       },
       scales: {
@@ -221,6 +266,32 @@ const Progress = () => {
         }
       }
     };
+  };
+
+  // Function to desaturate a color (convert to grayscale)
+  const desaturateColor = (colorStr) => {
+    // Handle rgba format
+    if (colorStr.startsWith('rgba')) {
+      const matches = colorStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+      if (matches) {
+        const [_, r, g, b, a] = matches;
+        // Calculate grayscale value (weighted average for proper luminance)
+        const gray = Math.round(0.299 * parseInt(r) + 0.587 * parseInt(g) + 0.114 * parseInt(b));
+        return `rgba(${gray}, ${gray}, ${gray}, ${a})`;
+      }
+    }
+    // Handle rgb format
+    if (colorStr.startsWith('rgb')) {
+      const matches = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (matches) {
+        const [_, r, g, b] = matches;
+        // Calculate grayscale value (weighted average for proper luminance)
+        const gray = Math.round(0.299 * parseInt(r) + 0.587 * parseInt(g) + 0.114 * parseInt(b));
+        return `rgb(${gray}, ${gray}, ${gray})`;
+      }
+    }
+    
+    return colorStr; // Return original if not in expected format
   };
 
   if (loading) {
@@ -352,6 +423,7 @@ const Progress = () => {
               <Tab label="Weight" disabled={!selectedProgress.weight.target} />
               <Tab label="Body Fat" disabled={!selectedProgress.fat_percentage.target || !selectedProgress.fat_percentage.current} />
               <Tab label="Muscle Mass" disabled={!selectedProgress.muscle_mass.target || !selectedProgress.muscle_mass.current} />
+              <Tab label="All" disabled={!selectedProgress.weight.target || !selectedProgress.fat_percentage.target || !selectedProgress.muscle_mass.target} />
             </Tabs>
           </Box>
           
@@ -407,6 +479,184 @@ const Progress = () => {
                         Insufficient data to display chart
                       </Typography>
                     );
+                  })()}
+                </Box>
+              )}
+              
+              {activeTab === 3 && selectedProgress.weight.target && selectedProgress.fat_percentage.target && selectedProgress.muscle_mass.target && (
+                <Box sx={{ height: 400 }}>
+                  {(() => {
+                    const weightData = prepareProjectionData('weight');
+                    const fatData = prepareProjectionData('fat');
+                    const muscleData = prepareProjectionData('muscle');
+
+                    if (!weightData || !fatData || !muscleData) {
+                      return (
+                        <Typography variant="body1" align="center" sx={{ pt: 8 }}>
+                          Insufficient data to display chart
+                        </Typography>
+                      );
+                    }
+
+                    // Combine all datasets
+                    const combinedData = {
+                      labels: weightData.labels,
+                      datasets: [
+                        {
+                          label: 'Weight (kg)',
+                          data: weightData.datasets[0].data,
+                          borderColor: 'rgb(75, 192, 192)',
+                          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                          pointRadius: 6,
+                          yAxisID: 'y1',
+                        },
+                        {
+                          label: 'Weight Target',
+                          data: weightData.datasets[1].data,
+                          borderColor: 'rgb(75, 192, 192)',
+                          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                          borderDash: [5, 5],
+                          yAxisID: 'y1',
+                        },
+                        {
+                          label: 'Body Fat (%)',
+                          data: fatData.datasets[0].data,
+                          borderColor: 'rgb(255, 99, 132)',
+                          backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                          pointRadius: 6,
+                          yAxisID: 'y2',
+                        },
+                        {
+                          label: 'Body Fat Target',
+                          data: fatData.datasets[1].data,
+                          borderColor: 'rgb(255, 99, 132)',
+                          backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                          borderDash: [5, 5],
+                          yAxisID: 'y2',
+                        },
+                        {
+                          label: 'Muscle Mass (kg)',
+                          data: muscleData.datasets[0].data,
+                          borderColor: 'rgb(54, 162, 235)',
+                          backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                          pointRadius: 6,
+                          yAxisID: 'y3',
+                        },
+                        {
+                          label: 'Muscle Mass Target',
+                          data: muscleData.datasets[1].data,
+                          borderColor: 'rgb(54, 162, 235)',
+                          backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                          borderDash: [5, 5],
+                          yAxisID: 'y3',
+                        },
+                      ],
+                    };
+
+                    const combinedOptions = {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        title: {
+                          display: true,
+                          text: 'All Metrics Projection',
+                        },
+                        tooltip: {
+                          callbacks: {
+                            label: function(context) {
+                              let label = context.dataset.label || '';
+                              if (label) {
+                                label += ': ';
+                              }
+                              if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(1);
+                              }
+                              return label;
+                            }
+                          }
+                        },
+                        legend: {
+                          display: true,
+                          position: 'top',
+                          labels: {
+                            boxWidth: 12,
+                            padding: 20,
+                            font: {
+                              size: 12
+                            },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                          },
+                          onClick: function(e, legendItem, legend) {
+                            const index = legendItem.datasetIndex;
+                            const ci = legend.chart;
+                            
+                            // Toggle visibility
+                            const meta = ci.getDatasetMeta(index);
+                            meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+                            
+                            // Apply desaturation to deselected datasets
+                            ci.data.datasets.forEach((dataset, i) => {
+                              const meta = ci.getDatasetMeta(i);
+                              
+                              // Store original colors on first encounter if not already stored
+                              if (!dataset.originalBorderColor) {
+                                dataset.originalBorderColor = dataset.borderColor;
+                              }
+                              if (!dataset.originalBackgroundColor) {
+                                dataset.originalBackgroundColor = dataset.backgroundColor;
+                              }
+                              
+                              if (meta.hidden) {
+                                // Desaturate the color if hidden
+                                dataset.borderColor = desaturateColor(dataset.originalBorderColor);
+                                dataset.backgroundColor = desaturateColor(dataset.originalBackgroundColor);
+                              } else {
+                                // Restore original color if not hidden
+                                dataset.borderColor = dataset.originalBorderColor;
+                                dataset.backgroundColor = dataset.originalBackgroundColor;
+                              }
+                            });
+                            
+                            ci.update();
+                          }
+                        }
+                      },
+                      scales: {
+                        y1: {
+                          type: 'linear',
+                          display: true,
+                          position: 'left',
+                          title: {
+                            display: true,
+                            text: 'Weight (kg)',
+                          },
+                        },
+                        y2: {
+                          type: 'linear',
+                          display: true,
+                          position: 'right',
+                          title: {
+                            display: true,
+                            text: 'Body Fat (%)',
+                          },
+                          grid: {
+                            drawOnChartArea: false,
+                          },
+                        },
+                        y3: {
+                          type: 'linear',
+                          display: true,
+                          position: 'right',
+                          title: {
+                            display: true,
+                            text: 'Muscle Mass (kg)',
+                          },
+                        },
+                      },
+                    };
+
+                    return <Line options={combinedOptions} data={combinedData} />;
                   })()}
                 </Box>
               )}

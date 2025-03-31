@@ -148,6 +148,8 @@ const prepareProjectionData = (metric, entries, goals, selectedGoal) => {
     new Date(entry.date) >= startDate && new Date(entry.date) <= new Date(latestEntry.date)
   );
 
+  if (relevantEntries.length === 0) return null;
+
   const metricMap = {
     weight: entry => entry.weight,
     fat: entry => entry.fat_percentage,
@@ -166,12 +168,9 @@ const prepareProjectionData = (metric, entries, goals, selectedGoal) => {
   const targetValue = goal[targetKey];
   if (targetValue == null) return null;
 
-  const currentValue = getMetricValue(latestEntry);
-  const daysFromLatestToTarget = differenceInDays(targetDate, new Date(latestEntry.date));
-  const dailyChangeRequired = (targetValue - currentValue) / daysFromLatestToTarget;
-  const daysFromStartToLatest = differenceInDays(new Date(latestEntry.date), startDate);
-  const startValue = currentValue - (dailyChangeRequired * daysFromStartToLatest);
-
+  const earliestEntry = relevantEntries[0];
+  const startValue = getMetricValue(earliestEntry);
+  
   return {
     datasets: [
       {
@@ -206,6 +205,10 @@ const prepareAllProjectionData = (entries, goals, selectedGoal) => {
   const startDate = goal.start_date ? new Date(goal.start_date) : new Date(latestEntry.date);
   const targetDate = new Date(goal.target_date);
   const relevantEntries = sortedEntries.filter(entry => new Date(entry.date) >= startDate && new Date(entry.date) <= new Date(latestEntry.date));
+  
+  if (relevantEntries.length === 0) return null;
+  
+  const earliestEntry = relevantEntries[0];
 
   const metrics = [
     { key: 'weight', label: 'Weight (kg)', color: 'rgb(75, 192, 192)', yAxisID: 'y1' },
@@ -218,13 +221,8 @@ const prepareAllProjectionData = (entries, goals, selectedGoal) => {
     const targetValue = goal[`target_${metric.key}`];
     if (targetValue == null) return;
 
-    const currentValue = latestEntry[metric.key];
-    if (currentValue == null) return;
-
-    const daysFromLatestToTarget = differenceInDays(targetDate, new Date(latestEntry.date));
-    const dailyChangeRequired = (targetValue - currentValue) / daysFromLatestToTarget;
-    const daysFromStartToLatest = differenceInDays(new Date(latestEntry.date), startDate);
-    const startValue = currentValue - (dailyChangeRequired * daysFromStartToLatest);
+    const startValue = earliestEntry[metric.key];
+    if (startValue == null) return;
 
     datasets.push({
       label: metric.label,

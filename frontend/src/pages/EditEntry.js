@@ -193,7 +193,6 @@ const EditEntry = () => {
                   label="Date"
                   value={date}
                   onChange={(newDate) => setDate(newDate)}
-                  maxDate={new Date()}
                   slotProps={{ 
                     textField: { 
                       fullWidth: true,

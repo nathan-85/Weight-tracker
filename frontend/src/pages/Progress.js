@@ -33,15 +33,56 @@ import 'chartjs-adapter-date-fns';
 import { getEntries, getGoals, getProgress } from '../services/api';
 import { useUserContext } from '../contexts/UserContext';
 
+// JS implementation of the backend's infer_belly_circumference logic
+const inferBellyCircumferenceJS = (fatPercentage, neck, height, gender, hip) => {
+  if (!fatPercentage || !neck || !height || !gender) {
+    // console.warn("Missing required inputs for inferBellyCircumferenceJS.");
+    return null;
+  }
 
-function interpolateY(start, end, x) {
-  const startTime = start.x.getTime();
-  const endTime = end.x.getTime();
-  const xTime = x; // Already a timestamp from parsed.x
-  if (startTime === endTime) return start.y; // Avoid division by zero
-  const ratio = (xTime - startTime) / (endTime - startTime);
-  return start.y + ratio * (end.y - start.y);
-}
+  // Convert measurements from cm to inches
+  const neckInches = neck / 2.54;
+  const heightInches = height / 2.54;
+  let bellyInches;
+
+  try {
+    if (gender.toLowerCase() === 'male') {
+      // Reverse male formula: body_fat = 86.010 * log10(belly - neck) - 70.041 * log10(height) + 36.76
+      const logArg = (fatPercentage - 36.76 + 70.041 * Math.log10(heightInches)) / 86.010;
+      const bellyMinusNeck = 10 ** logArg;
+      bellyInches = bellyMinusNeck + neckInches;
+    } else { // female
+      if (!hip) {
+        // console.warn("Hip measurement missing for female belly inference. Using simplified formula.");
+        // Reverse simplified female formula: body_fat = 163.205 * log10(belly - neck) - 97.684 * log10(height) - 78.387
+        const logArg = (fatPercentage + 78.387 + 97.684 * Math.log10(heightInches)) / 163.205;
+        const bellyMinusNeck = 10 ** logArg;
+        bellyInches = bellyMinusNeck + neckInches;
+      } else {
+        const hipInches = hip / 2.54;
+        // Reverse full female formula: body_fat = 163.205 * log10(belly + hip - neck) - 97.684 * log10(height) - 104.912
+        const logArg = (fatPercentage + 104.912 + 97.684 * Math.log10(heightInches)) / 163.205;
+        const bellyPlusHipMinusNeck = 10 ** logArg;
+        bellyInches = bellyPlusHipMinusNeck + neckInches - hipInches;
+      }
+    }
+
+    // Convert back to cm
+    const bellyCm = bellyInches * 2.54;
+
+    // Basic sanity check
+    if (isNaN(bellyCm) || !isFinite(bellyCm) || bellyCm < neck || bellyCm > 250) {
+    //   console.warn(`Inferred belly circumference (${bellyCm}) seems unrealistic or invalid.`);
+      return null;
+    }
+
+    return parseFloat(bellyCm.toFixed(1)); // Return as number with 1 decimal place
+
+  } catch (e) {
+    // console.error("Error calculating inferred belly circumference:", e);
+    return null;
+  }
+};
 
 // Register ChartJS components
 ChartJS.register(
@@ -113,7 +154,10 @@ const MetricProgress = ({ metric, data }) => {
         <CardContent>
           <Typography variant="h6" gutterBottom>{label}</Typography>
           <Typography variant="body2" color="text.primary" gutterBottom>
-            Current: {data.current.toFixed(1)} {unit} | Target: {data.target.toFixed(1)} {unit}
+            Current: {data.current.toFixed(1)} {unit} 
+            {metric === 'fat' && data.current_inferred_belly && `(${data.current_inferred_belly.toFixed(0)} cm)`}
+             | Target: {data.target.toFixed(1)} {unit}
+            {metric === 'fat' && data.target_inferred_belly && `(${data.target_inferred_belly.toFixed(0)} cm)`}
           </Typography>
           <Typography variant="body2">
             {data.daily_change_needed !== 0 ? 
@@ -272,7 +316,7 @@ const prepareAllProjectionData = (entries, goals, selectedGoal) => {
 };
 
 // Chart Components
-const ProjectionChart = ({ metric, entries, goals, selectedGoal }) => {
+const ProjectionChart = ({ metric, entries, goals, selectedGoal, selectedProgress, currentUser, latestEntry }) => {
   const theme = useTheme();
   const chartData = useMemo(
     () => prepareProjectionData(metric, entries, goals, selectedGoal),
@@ -296,10 +340,26 @@ const ProjectionChart = ({ metric, entries, goals, selectedGoal }) => {
         tooltip: {
           callbacks: {
             label: function (context) {
-              const label = context.dataset.label || '';
+              const datasetLabel = context.dataset.label || '';
               const value = context.parsed.y;
-              const unit = metric === 'fat' ? '%' : 'kg'; // Fixed typo 'kgg' to 'kg'
-              return `${label}: ${value.toFixed(1)} ${unit}`;
+              const unit = metric === 'fat' ? '%' : 'kg';
+              let displayValue = `${datasetLabel}: ${value.toFixed(1)} ${unit}`;
+
+              // Check if it's the fat metric and necessary data for inference is available
+              if (metric === 'fat' && currentUser && latestEntry?.neck && currentUser.height && currentUser.sex) {
+                const inferredBelly = inferBellyCircumferenceJS(
+                  value, // Use the specific point's fat % value
+                  latestEntry.neck,
+                  currentUser.height,
+                  currentUser.sex,
+                  latestEntry.hip // Pass hip, will be null if not applicable/entered
+                );
+
+                if (inferredBelly !== null) {
+                  displayValue += ` (${inferredBelly.toFixed(1)} cm)`;
+                }
+              }
+              return displayValue;
             },
           },
         },
@@ -367,7 +427,7 @@ const ProjectionChart = ({ metric, entries, goals, selectedGoal }) => {
         },
       },
     }),
-    [metric, unit, theme]
+    [metric, unit, theme, currentUser, latestEntry]
   );
 
   return chartData ? (
@@ -381,7 +441,7 @@ const ProjectionChart = ({ metric, entries, goals, selectedGoal }) => {
   );
 };
 
-const AllMetricsChart = ({ entries, goals, selectedGoal }) => {
+const AllMetricsChart = ({ entries, goals, selectedGoal, selectedProgress, currentUser, latestEntry }) => {
   const theme = useTheme();
   const chartData = useMemo(() => prepareAllProjectionData(entries, goals, selectedGoal), [entries, goals, selectedGoal]);
   const options = useMemo(() => ({
@@ -391,7 +451,36 @@ const AllMetricsChart = ({ entries, goals, selectedGoal }) => {
       title: { display: true, text: 'All Metrics Projection', color: theme.palette.mode === 'dark' ? '#fff' : '#000' },
       tooltip: {
         callbacks: {
-          label: context => `${context.dataset.label}: ${context.parsed.y?.toFixed(1)}`,
+          label: context => {
+            const datasetLabel = context.dataset.label || '';
+            const value = context.parsed.y;
+            let label = `${datasetLabel}: ${value?.toFixed(1)}`; // Initial label without unit
+
+            // Determine unit and check if dataset is fat-related
+            let isFatMetric = false;
+            let unit = '';
+            if (datasetLabel.includes('Weight')) { unit = 'kg'; }
+            else if (datasetLabel.includes('Body Fat')) { unit = '%'; isFatMetric = true; }
+            else if (datasetLabel.includes('Muscle Mass')) { unit = 'kg'; }
+
+            if(unit) { label += ` ${unit}`; } // Add unit if determined
+
+            // Check if it's a fat metric and necessary data for inference is available
+            if (isFatMetric && currentUser && latestEntry?.neck && currentUser.height && currentUser.sex) {
+               const inferredBelly = inferBellyCircumferenceJS(
+                  value, // Use the specific point's fat % value
+                  latestEntry.neck,
+                  currentUser.height,
+                  currentUser.sex,
+                  latestEntry.hip // Pass hip, will be null if not applicable/entered
+                );
+
+               if (inferredBelly !== null) {
+                  label += ` (${inferredBelly.toFixed(1)} cm)`;
+               }
+            }
+            return label;
+          },
         },
       },
       legend: {
@@ -446,7 +535,7 @@ const AllMetricsChart = ({ entries, goals, selectedGoal }) => {
         ticks: { color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' },
       },
     },
-  }), [theme]);
+  }), [theme, currentUser, latestEntry]);
 
   return chartData ? (
     <Box sx={{ height: 400 }}>
@@ -513,6 +602,13 @@ const Progress = () => {
     }
   }, [progress, selectedGoal]);
 
+  // Derive latest entry for measurement inference
+  const latestEntry = useMemo(() => {
+    if (!entries || entries.length === 0) return null;
+    // Sort by date descending to get the latest
+    return [...entries].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  }, [entries]);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -543,10 +639,10 @@ const Progress = () => {
               </Box>
               <Card>
                 <CardContent>
-                  {activeTab === 0 && <ProjectionChart metric="weight" entries={entries} goals={goals} selectedGoal={selectedGoal} />}
-                  {activeTab === 1 && <ProjectionChart metric="fat" entries={entries} goals={goals} selectedGoal={selectedGoal} />}
-                  {activeTab === 2 && <ProjectionChart metric="muscle" entries={entries} goals={goals} selectedGoal={selectedGoal} />}
-                  {activeTab === 3 && <AllMetricsChart entries={entries} goals={goals} selectedGoal={selectedGoal} />}
+                  {activeTab === 0 && <ProjectionChart metric="weight" entries={entries} goals={goals} selectedGoal={selectedGoal} selectedProgress={selectedProgress} currentUser={currentUser} latestEntry={latestEntry} />}
+                  {activeTab === 1 && <ProjectionChart metric="fat" entries={entries} goals={goals} selectedGoal={selectedGoal} selectedProgress={selectedProgress} currentUser={currentUser} latestEntry={latestEntry} />}
+                  {activeTab === 2 && <ProjectionChart metric="muscle" entries={entries} goals={goals} selectedGoal={selectedGoal} selectedProgress={selectedProgress} currentUser={currentUser} latestEntry={latestEntry} />}
+                  {activeTab === 3 && <AllMetricsChart entries={entries} goals={goals} selectedGoal={selectedGoal} selectedProgress={selectedProgress} currentUser={currentUser} latestEntry={latestEntry} />}
                 </CardContent>
               </Card>
             </>

@@ -155,9 +155,9 @@ const MetricProgress = ({ metric, data }) => {
           <Typography variant="h6" gutterBottom>{label}</Typography>
           <Typography variant="body2" color="text.primary" gutterBottom>
             Current: {data.current.toFixed(1)} {unit} 
-            {metric === 'fat' && data.current_inferred_belly && `(${data.current_inferred_belly.toFixed(0)} cm)`}
+            {metric === 'fat' && data.current_inferred_belly && ` (${data.current_inferred_belly.toFixed(0)} cm)`}
              | Target: {data.target.toFixed(1)} {unit}
-            {metric === 'fat' && data.target_inferred_belly && `(${data.target_inferred_belly.toFixed(0)} cm)`}
+            {metric === 'fat' && data.target_inferred_belly && ` (${data.target_inferred_belly.toFixed(0)} cm)`}
           </Typography>
           <Typography variant="body2">
             {data.daily_change_needed !== 0 ? 
@@ -486,13 +486,36 @@ const AllMetricsChart = ({ entries, goals, selectedGoal, selectedProgress, curre
       legend: {
         display: true,
         position: 'top',
-        labels: { boxWidth: 12, padding: 20, font: { size: 12 }, usePointStyle: true, pointStyle: 'circle', color: theme.palette.mode === 'dark' ? '#fff' : '#000' },
+        labels: {
+          boxWidth: 12,
+          padding: 20,
+          font: { size: 12 },
+          usePointStyle: true,
+          pointStyle: 'circle',
+          color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+          filter: (legendItem) => !legendItem.text.includes('Target'),
+        },
         onClick: (e, legendItem, legend) => {
-          const index = legendItem.datasetIndex;
           const ci = legend.chart;
-          const meta = ci.getDatasetMeta(index);
-          meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+          const index = legendItem.datasetIndex;
+          const clickedLabel = legendItem.text; // e.g., "Weight (kg)"
 
+          // Find the index of the corresponding "Target" dataset
+          const targetDatasetIndex = ci.data.datasets.findIndex(
+            dataset => dataset.label === `${clickedLabel} Target`
+          );
+
+          // Toggle visibility for both datasets
+          const meta = ci.getDatasetMeta(index);
+          const newHidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null; // Determine new hidden state
+          meta.hidden = newHidden;
+
+          if (targetDatasetIndex !== -1) {
+            const targetMeta = ci.getDatasetMeta(targetDatasetIndex);
+            targetMeta.hidden = newHidden; // Apply the same hidden state
+          }
+
+          // Update styles for all datasets based on their hidden state
           ci.data.datasets.forEach((dataset, i) => {
             const meta = ci.getDatasetMeta(i);
             dataset.originalBorderColor = dataset.originalBorderColor || dataset.borderColor;

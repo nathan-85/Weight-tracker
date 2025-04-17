@@ -21,7 +21,9 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle
+  DialogTitle,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { 
   Delete as DeleteIcon, 
@@ -62,6 +64,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { currentUser } = useUserContext();
   const { darkMode } = useThemeContext();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const tickAngle = isSmallScreen ? 90 : 45;
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -241,9 +246,11 @@ const Dashboard = () => {
           color: darkMode ? '#ffffff' : undefined,
           align: 'start',
           source: 'data',
-          autoSkip: false,
-          maxRotation: 45,
-          minRotation: 0
+          autoSkip: true,
+          maxTicksLimit: isSmallScreen ? 8 : 15,
+          maxRotation: tickAngle,
+          minRotation: tickAngle,
+          padding: 2,
         },
         bounds: 'data',
         grid: {

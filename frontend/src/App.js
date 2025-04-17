@@ -16,6 +16,7 @@ import NewProfile from './pages/NewProfile';
 import EditProfile from './pages/EditProfile';
 import EditEntry from './pages/EditEntry';
 import Settings from './pages/Settings';
+import MobileNav from './components/MobileNav';
 
 function App() {
   // Check if debug mode is enabled in localStorage
@@ -40,6 +41,7 @@ function App() {
               <Route path="/profile/edit/:userId" element={<EditProfile />} />
             </Routes>
           </Container>
+          <MobileNav />
         </Box>
       </Router>
     </LocalizationProvider>

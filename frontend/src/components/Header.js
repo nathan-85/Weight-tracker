@@ -30,9 +30,12 @@ import {
   BugReport as DebugIcon,
   Person as PersonIcon,
   Add as AddPersonIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon
 } from '@mui/icons-material';
 import { useUserContext } from '../contexts/UserContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 // import { format } from 'date-fns';
 
 const navItems = [
@@ -54,6 +57,7 @@ const Header = ({ isDebugMode }) => {
   const [showDebugMode, setShowDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
   const { users, currentUser, switchUser } = useUserContext();
+  const { darkMode, toggleDarkMode } = useThemeContext();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -306,6 +310,10 @@ const Header = ({ isDebugMode }) => {
               </MenuItem>
             </Menu>
           )}
+          {/* Dark mode toggle */}
+          <IconButton sx={{ ml: 1 }} onClick={toggleDarkMode} color="inherit">
+            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Drawer

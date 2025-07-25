@@ -31,6 +31,10 @@ else:
 SQLALCHEMY_DATABASE_URI = 'sqlite:///weight_tracker.db'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+
 # Server configuration
 HOST = '127.0.0.1'
 PORT = 5001
+
+# Secret key for session security
+SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-secret-key')

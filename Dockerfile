@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 # Copy built frontend from previous stage
-COPY --from=frontend-build /app/frontend/build ./weight_tracker/frontend/
+COPY --from=frontend-build /app/frontend/build ./frontend/build/
 
 EXPOSE 5000
 CMD ["python", "-m", "flask", "--app", "weight_tracker", "run", "--host", "0.0.0.0", "--port", "5000"]

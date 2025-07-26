@@ -7,6 +7,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { useThemeContext } from './contexts/ThemeContext';
 
 // Theme wrapper component to apply dark/light mode
@@ -90,12 +91,14 @@ const ThemedApp = () => {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <UserProvider>
-      <ThemeProvider>
-        <SettingsProvider>
-          <ThemedApp />
-        </SettingsProvider>
-      </ThemeProvider>
-    </UserProvider>
+    <AuthProvider>
+      <UserProvider>
+        <ThemeProvider>
+          <SettingsProvider>
+            <ThemedApp />
+          </SettingsProvider>
+        </ThemeProvider>
+      </UserProvider>
+    </AuthProvider>
   </React.StrictMode>
 ); 

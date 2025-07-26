@@ -179,7 +179,7 @@ const Header = ({ isDebugMode }) => {
           
           {/* User selector */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 'auto' }}>
-            {currentAccount && (
+            {currentAccount && currentUser && (
               <Tooltip title="Click to change user or manage profile">
                 <Button 
                   onClick={handleUserMenuOpen}

@@ -172,3 +172,58 @@ For additional troubleshooting, see DEBUG_GUIDE.md (note: some scripts mentioned
 
 - Backend: Flask, SQLAlchemy, SQLite
 - Frontend: React, Chart.js, Material-UI
+
+## Deployment to Render.com
+
+This application can be deployed to Render.com as a single web service that serves both the backend API and the built frontend static files.
+
+### Prerequisites
+
+- Push your repository to GitHub or another git provider supported by Render.
+- Create a free account on [Render.com](https://render.com).
+
+### Deployment Steps
+
+1. In the Render dashboard, click "New" > "Web Service".
+2. Connect your repository and select the branch (e.g., main).
+3. Configure the service:
+   - **Runtime**: Python
+   - **Build Command**: `pip install -r requirements.txt && cd frontend && npm install && npm run build`
+   - **Start Command**: `gunicorn -b 0.0.0.0:$PORT weight_tracker:create_app`
+4. Set environment variables:
+   - `FLASK_ENV`: `production`
+   - `PYTHON_VERSION`: `3.11.0` (or your preferred version, optional)
+5. For database persistence, choose one of the options below.
+
+#### Option 1: SQLite with Persistent Disk (simplest, keeps original setup)
+
+- In the service settings, go to "Disks" and add a new disk:
+  - Name: `data`
+  - Mount Path: `/data`
+  - Size: 1 GB (or more if needed)
+- Add environment variable:
+  - `DATABASE_URL`: `sqlite:////data/weight_tracker.db`
+
+This will store the SQLite database on a persistent disk.
+
+#### Option 2: PostgreSQL (recommended for better scalability)
+
+- In Render, click "New" > "PostgreSQL" to create a new database.
+- Once created, copy the **External Database URL** from the database Info tab.
+- In your web service environment variables, add:
+  - `DATABASE_URL`: `<your-postgres-url>` (paste the URL here)
+
+Render will automatically manage the database connection.
+
+6. Click "Create Web Service".
+7. Once deployed, your app will be available at the provided Render URL.
+
+### Notes
+
+- The app serves the frontend from the backend in production, using the built files from `frontend/build`.
+- For production, debug mode is disabled via `FLASK_ENV=production`.
+- If using PostgreSQL, ensure `psycopg2-binary` is in `requirements.txt` (it should be added already).
+- Access the app at the Render-provided domain (e.g., your-app.onrender.com).
+- For custom domains, configure in Render settings.
+
+For any deployment issues, check the Render logs and ensure all commands execute successfully.

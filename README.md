@@ -184,6 +184,8 @@ This application can be deployed to Render.com as a single web service that serv
 
 ### Deployment Steps
 
+If you encounter an error about missing Dockerfile, ensure you select "Python" as the Runtime. If you prefer to use Docker, see the Docker alternative below.
+
 1. In the Render dashboard, click "New" > "Web Service".
 2. Connect your repository and select the branch (e.g., main).
 3. Configure the service:
@@ -217,6 +219,45 @@ Render will automatically manage the database connection.
 
 6. Click "Create Web Service".
 7. Once deployed, your app will be available at the provided Render URL.
+
+### Alternative: Deploy with Docker
+
+If you prefer to use Docker (or if the Python runtime doesn't work), add a `Dockerfile` to the project root with the following content:
+
+```
+FROM python:3.11-slim
+
+# Install Node.js and npm
+RUN apt-get update && apt-get install -y nodejs npm
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY . .
+
+# Install Python dependencies
+RUN pip install -r requirements.txt
+
+# Install frontend dependencies and build
+RUN cd frontend && npm install && npm run build
+
+# Expose the port
+EXPOSE $PORT
+
+# Run the application
+CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "weight_tracker:create_app"]
+```
+
+Then, in Render:
+
+1. Select **Runtime**: Docker
+2. The build and start commands can be left blank as they will be handled by the Dockerfile.
+3. Set the same environment variables as above.
+4. Configure the disk or PostgreSQL as described.
+5. Create the service.
+
+This Dockerfile ensures both Python and Node.js are available for building the app.
 
 ### Notes
 

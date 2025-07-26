@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BottomNavigation,
@@ -6,7 +6,10 @@ import {
   Paper,
   Fade,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -14,8 +17,11 @@ import {
   Flag as FlagIcon,
   ShowChart as ChartIcon,
   Person as PersonIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Login as LoginIcon,
+  PersonAdd as PersonAddIcon
 } from '@mui/icons-material';
+import { AuthContext } from '../contexts/AuthContext';
 
 /**
  * MobileNav
@@ -27,6 +33,7 @@ const MobileNav = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { currentAccount } = useContext(AuthContext);
 
   // Keep track of current tab based on route
   const [value, setValue] = useState(location.pathname);
@@ -57,12 +64,22 @@ const MobileNav = () => {
         }}
       >
         <BottomNavigation value={value} onChange={handleChange} showLabels>
-          <BottomNavigationAction label="Dashboard" value="/" icon={<DashboardIcon />} />
-          <BottomNavigationAction label="New Entry" value="/new-entry" icon={<AddIcon />} />
-          <BottomNavigationAction label="Goals" value="/goals" icon={<FlagIcon />} />
-          <BottomNavigationAction label="Progress" value="/progress" icon={<ChartIcon />} />
-          <BottomNavigationAction label="Profile" value="/profile" icon={<PersonIcon />} />
-          <BottomNavigationAction label="Settings" value="/settings" icon={<SettingsIcon />} />
+          {currentAccount && (
+            <>
+              <BottomNavigationAction label="Dashboard" value="/" icon={<DashboardIcon />} />
+              <BottomNavigationAction label="New Entry" value="/new-entry" icon={<AddIcon />} />
+              <BottomNavigationAction label="Goals" value="/goals" icon={<FlagIcon />} />
+              <BottomNavigationAction label="Progress" value="/progress" icon={<ChartIcon />} />
+              <BottomNavigationAction label="Profile" value="/profile" icon={<PersonIcon />} />
+              <BottomNavigationAction label="Settings" value="/settings" icon={<SettingsIcon />} />
+            </>
+          )}
+          {!currentAccount && (
+            <>
+              <BottomNavigationAction label="Login" value="/login" icon={<LoginIcon />} />
+              <BottomNavigationAction label="Register" value="/register" icon={<PersonAddIcon />} />
+            </>
+          )}
         </BottomNavigation>
       </Paper>
     </Fade>

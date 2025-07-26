@@ -1,19 +1,22 @@
 from flask import Blueprint, request, jsonify
 from weight_tracker.models import db, User, Entry, Goal
 from weight_tracker.config import logger
+from flask_login import login_required, current_user
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
 @users_bp.route('', methods=['GET'])
+@login_required
 def get_users():
     try:
-        users = User.query.order_by(User.name).all()
+        users = User.query.filter_by(account_id=current_user.id).order_by(User.name).all()
         return jsonify([user.to_dict() for user in users])
     except Exception as e:
         logger.error(f"Error fetching users: {e}")
         return jsonify({'error': 'Failed to fetch users'}), 500
 
 @users_bp.route('', methods=['POST'])
+@login_required
 def add_user():
     try:
         data = request.json
@@ -27,7 +30,8 @@ def add_user():
             name=data.get('name'),
             age=data.get('age'),
             sex=data.get('sex'),
-            height=data.get('height')
+            height=data.get('height'),
+            account_id=current_user.id
         )
         
         db.session.add(new_user)
@@ -40,9 +44,10 @@ def add_user():
         return jsonify({'error': 'Failed to add user'}), 500
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
+@login_required
 def get_user(user_id):
     try:
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id, account_id=current_user.id).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
@@ -52,9 +57,10 @@ def get_user(user_id):
         return jsonify({'error': 'Failed to fetch user'}), 500
 
 @users_bp.route('/<int:user_id>', methods=['PUT'])
+@login_required
 def update_user(user_id):
     try:
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id, account_id=current_user.id).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
             
@@ -78,9 +84,10 @@ def update_user(user_id):
         return jsonify({'error': 'Failed to update user'}), 500
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
+@login_required
 def delete_user(user_id):
     try:
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id, account_id=current_user.id).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
         

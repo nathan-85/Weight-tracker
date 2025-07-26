@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getUsers, addUser } from '../services/api';
 
 // Create context
@@ -16,7 +16,7 @@ export const UserProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Function to load users from the API
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -47,19 +47,19 @@ export const UserProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]); // Note: added currentUser as dep because it's used inside
 
   // Function to switch the current user
-  const switchUser = (userId) => {
+  const switchUser = useCallback((userId) => {
     const user = users.find(u => u.id === userId);
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('currentUserId', userId.toString());
     }
-  };
+  }, [users]);
 
   // Function to create a default user if none exist
-  const createDefaultUser = async () => {
+  const createDefaultUser = useCallback(async () => {
     try {
       const defaultUser = {
         name: 'Default User',
@@ -76,7 +76,7 @@ export const UserProvider = ({ children }) => {
       setError('Failed to create default user');
       console.error(err);
     }
-  };
+  }, []);
 
   // Load users on initial mount
   useEffect(() => {
@@ -85,11 +85,15 @@ export const UserProvider = ({ children }) => {
         const usersData = await getUsers();
         setUsers(usersData);
         
-        // Only create a default user if no users exist in the database
         if (usersData.length === 0) {
-          await createDefaultUser();
-        } else if (!currentUser) {
-          // If there are users but no current user is selected, select one
+          console.log('No users found - would create default, but disabled');
+          // await createDefaultUser();  // Keep commented out
+        } else {
+          console.log(`Found ${usersData.length} users - no default needed`);
+        }
+        
+        // Keep the selection logic
+        if (usersData.length > 0 && !currentUser) {
           const lastSelectedUserId = localStorage.getItem('currentUserId');
           
           if (lastSelectedUserId) {

@@ -1,9 +1,30 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from weight_tracker.utils import calculate_body_fat_percentage, calculate_muscle_mass
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 # Initialize SQLAlchemy instance
 db = SQLAlchemy()
+
+class Account(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -12,6 +33,7 @@ class User(db.Model):
     sex = db.Column(db.String(10))  # 'male', 'female', or 'other'
     height = db.Column(db.Float)  # height in cm
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)  # nullable for migration
     
     def to_dict(self):
         return {
@@ -31,6 +53,7 @@ class Entry(db.Model):
     belly = db.Column(db.Float)  # belly circumference in cm
     hip = db.Column(db.Float)  # hip circumference in cm for female users
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)  # nullable for migration
 
     def to_dict(self):
         # Calculate values on-the-fly when converting to dict
@@ -68,6 +91,7 @@ class Goal(db.Model):
     description = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # nullable for backward compatibility
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)  # nullable for migration
     start_date = db.Column(db.DateTime, nullable=True)  # Start date for goal tracking
 
     def to_dict(self):

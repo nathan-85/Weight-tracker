@@ -17,34 +17,42 @@ import EditProfile from './pages/EditProfile';
 import EditEntry from './pages/EditEntry';
 import Settings from './pages/Settings';
 import MobileNav from './components/MobileNav';
+import { AuthProvider } from './contexts/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   // Check if debug mode is enabled in localStorage
   const [isDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Router>
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Header isDebugMode={isDebugMode} />
-          <Container component="main" sx={{ flexGrow: 1, py: 3, px: { xs: 2, sm: 3, md: 4 }, maxWidth: '100% !important' }}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/new-entry" element={<NewEntry />} />
-              <Route path="/edit-entry/:entryId" element={<EditEntry />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/progress" element={<Progress />} />
-              <Route path="/settings" element={<Settings />} />
-              {isDebugMode && <Route path="/debug" element={<Debug />} />}
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/new" element={<NewProfile />} />
-              <Route path="/profile/edit/:userId" element={<EditProfile />} />
-            </Routes>
-          </Container>
-          <MobileNav />
-        </Box>
-      </Router>
-    </LocalizationProvider>
+    <AuthProvider>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <Router>
+          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isDebugMode={isDebugMode} />
+            <Container component="main" sx={{ flexGrow: 1, py: 3, px: { xs: 2, sm: 3, md: 4 }, maxWidth: '100% !important' }}>
+              <Routes>
+                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/new-entry" element={<ProtectedRoute><NewEntry /></ProtectedRoute>} />
+                <Route path="/edit-entry/:entryId" element={<ProtectedRoute><EditEntry /></ProtectedRoute>} />
+                <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
+                <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                {isDebugMode && <Route path="/debug" element={<ProtectedRoute><Debug /></ProtectedRoute>} />}
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/profile/new" element={<ProtectedRoute><NewProfile /></ProtectedRoute>} />
+                <Route path="/profile/edit/:userId" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+              </Routes>
+            </Container>
+            <MobileNav />
+          </Box>
+        </Router>
+      </LocalizationProvider>
+    </AuthProvider>
   );
 }
 

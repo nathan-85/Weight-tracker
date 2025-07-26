@@ -3,6 +3,9 @@ from flask_cors import CORS
 from weight_tracker.config import logger, SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS
 from weight_tracker.models import db
 from weight_tracker.routes import register_blueprints
+from flask_login import LoginManager
+from weight_tracker.models import Account
+import os
 
 def create_app():
     """Create and configure the Flask application"""
@@ -27,6 +30,18 @@ def create_app():
     
     # Register blueprints
     register_blueprints(app)
+
+    # Add secret key
+    app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-for-dev')
+
+    # Initialize Flask-Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+
+    @login_manager.user_loader
+    def load_user(account_id):
+        return Account.query.get(int(account_id))
     
     # Frontend serving route
     @app.route('/', methods=['GET'])

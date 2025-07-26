@@ -161,6 +161,42 @@ export const getProgress = async (userId = null) => {
   }
 };
 
+export const register = async (credentials) => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/register`, credentials);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const login = async (credentials) => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/login`, credentials);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const logout = async () => {
+  try {
+    await axios.post(`${API_URL}/auth/logout`);
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getAuthStatus = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/auth/status`);
+    return response.data;
+  } catch (error) {
+    return { authenticated: false };
+  }
+};
+
 // Debug API
 export const getDebugStatus = async () => {
   try {

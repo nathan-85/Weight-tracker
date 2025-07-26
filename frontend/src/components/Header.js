@@ -34,8 +34,11 @@ import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon
 } from '@mui/icons-material';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useUserContext } from '../contexts/UserContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
 // import { format } from 'date-fns';
 
 const navItems = [
@@ -58,7 +61,8 @@ const Header = ({ isDebugMode }) => {
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
   const { users, currentUser, switchUser } = useUserContext();
   const { darkMode, toggleDarkMode } = useThemeContext();
-
+  const { signOut, currentAccount } = useContext(AuthContext);
+  
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -91,6 +95,12 @@ const Header = ({ isDebugMode }) => {
   const handleUserSwitch = (userId) => {
     switchUser(userId);
     handleUserMenuClose();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    handleUserMenuClose();
+    // Optional: navigate('/login') if needed, but ProtectedRoute will handle redirects
   };
 
   const drawer = (
@@ -169,7 +179,7 @@ const Header = ({ isDebugMode }) => {
           
           {/* User selector */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 'auto' }}>
-            {currentUser && (
+            {currentAccount && (
               <Tooltip title="Click to change user or manage profile">
                 <Button 
                   onClick={handleUserMenuOpen}
@@ -248,12 +258,18 @@ const Header = ({ isDebugMode }) => {
                 </ListItemIcon>
                 Add New Profile
               </MenuItem>
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                Logout
+              </MenuItem>
             </Menu>
           </Box>
           
           {!isMobile && (
             <Box sx={{ display: 'flex' }}>
-              {menuItems.map((item) => (
+              {currentAccount && menuItems.map((item) => (
                 <Button
                   key={item.text}
                   component={RouterLink}

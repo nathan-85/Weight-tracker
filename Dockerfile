@@ -1,6 +1,6 @@
 # Dockerfile for Weight Tracker app
 # Stage 1: Build React frontend
-FROM node:20-alpine AS frontend-build
+FROM node:18-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -15,7 +15,7 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .

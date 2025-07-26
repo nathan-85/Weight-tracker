@@ -6,10 +6,7 @@ import {
   Paper,
   Fade,
   useTheme,
-  useMediaQuery,
-  ListItem,
-  ListItemIcon,
-  ListItemText
+  useMediaQuery
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,

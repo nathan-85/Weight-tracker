@@ -47,7 +47,7 @@ const Profile = () => {
   useEffect(() => {
     // Refresh users list when component mounts
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const handleAddProfile = () => {
     navigate('/profile/new');

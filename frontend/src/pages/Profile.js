@@ -11,7 +11,6 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Dialog,
   DialogTitle,
@@ -19,8 +18,6 @@ import {
   DialogContentText,
   DialogActions,
   Divider,
-  Tooltip,
-  Paper,
   Chip,
   Alert
 } from '@mui/material';
@@ -38,7 +35,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useUserContext } from '../contexts/UserContext';
 import { deleteUser } from '../services/api';
-import { format } from 'date-fns';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -51,7 +47,7 @@ const Profile = () => {
   useEffect(() => {
     // Refresh users list when component mounts
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const handleAddProfile = () => {
     navigate('/profile/new');
@@ -94,11 +90,6 @@ const Profile = () => {
 
   const handleSwitchUser = (userId) => {
     switchUser(userId);
-  };
-
-  const formatAustralianDate = (date) => {
-    if (!date) return 'N/A';
-    return format(new Date(date), 'dd/MM/yyyy');
   };
 
   const getUserInitials = (name) => {

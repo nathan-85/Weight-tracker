@@ -114,6 +114,7 @@ export const UserProvider = ({ children }) => {
     };
     
     initializeUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The value provided to consumers of this context

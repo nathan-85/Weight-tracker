@@ -3,6 +3,12 @@ body {
   font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Handle iOS safe areas */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Ensure body takes full viewport including safe areas */
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 .container {
@@ -29,5 +35,21 @@ body {
 @media (max-width: 600px) {
   .chart-container {
     height: 300px;
+  }
+  
+  /* Add bottom padding to prevent content from being hidden behind mobile nav */
+  #root {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  
+  /* Ensure mobile nav doesn't get cut off horizontally */
+  .MuiBottomNavigation-root {
+    padding-left: max(8px, env(safe-area-inset-left)) !important;
+    padding-right: max(8px, env(safe-area-inset-right)) !important;
+  }
+  
+  /* Improve touch targets on mobile */
+  button, .MuiButton-root, .MuiBottomNavigationAction-root {
+    min-height: 44px; /* iOS recommended minimum touch target */
   }
 } 

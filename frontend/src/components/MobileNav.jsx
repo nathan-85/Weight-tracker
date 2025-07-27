@@ -44,8 +44,16 @@ const MobileNav = () => {
   if (!isMobile) return null;
 
   const handleChange = (_, newValue) => {
+    console.log('MobileNav: handleChange called with value:', newValue);
     setValue(newValue);
     navigate(newValue);
+  };
+
+  // Direct click handler as backup
+  const handleDirectClick = (path) => {
+    console.log('MobileNav: direct click handler called with path:', path);
+    setValue(path);
+    navigate(path);
   };
 
   return (
@@ -57,24 +65,84 @@ const MobileNav = () => {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: theme.zIndex.appBar,
+          zIndex: theme.zIndex.appBar + 1,
+          // Handle iOS safe area insets - all sides
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          // Ensure proper touch events
+          touchAction: 'manipulation',
+          // Prevent iOS bounce scrolling from interfering
+          WebkitOverflowScrolling: 'touch',
+          // Ensure no horizontal overflow
+          overflow: 'hidden',
         }}
       >
-        <BottomNavigation value={value} onChange={handleChange} showLabels>
+        <BottomNavigation 
+          value={value} 
+          onChange={handleChange} 
+          showLabels
+          sx={{
+            // Add extra padding for better iOS experience
+            paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+            // Ensure proper touch target size and better spacing
+            '& .MuiBottomNavigationAction-root': {
+              minHeight: '64px',
+              paddingTop: '6px',
+              paddingBottom: '8px',
+              minWidth: '60px',
+              maxWidth: '120px',
+              flex: '1 1 auto',
+            },
+            // Better font sizing for mobile
+            '& .MuiBottomNavigationAction-label': {
+              fontSize: '0.75rem',
+              marginTop: '4px',
+            },
+          }}
+        >
           {currentAccount && (
             <>
-              <BottomNavigationAction label="Dashboard" value="/" icon={<DashboardIcon />} />
-              <BottomNavigationAction label="New Entry" value="/new-entry" icon={<AddIcon />} />
-              <BottomNavigationAction label="Goals" value="/goals" icon={<FlagIcon />} />
-              <BottomNavigationAction label="Progress" value="/progress" icon={<ChartIcon />} />
-              <BottomNavigationAction label="Profile" value="/profile" icon={<PersonIcon />} />
-              <BottomNavigationAction label="Settings" value="/settings" icon={<SettingsIcon />} />
+              <BottomNavigationAction 
+                label="Home" 
+                value="/" 
+                icon={<DashboardIcon />}
+                onClick={() => handleDirectClick('/')}
+              />
+              <BottomNavigationAction 
+                label="Add" 
+                value="/new-entry" 
+                icon={<AddIcon />}
+                onClick={() => handleDirectClick('/new-entry')}
+              />
+              <BottomNavigationAction 
+                label="Progress" 
+                value="/progress" 
+                icon={<ChartIcon />}
+                onClick={() => handleDirectClick('/progress')}
+              />
+              <BottomNavigationAction 
+                label="Profile" 
+                value="/profile" 
+                icon={<PersonIcon />}
+                onClick={() => handleDirectClick('/profile')}
+              />
             </>
           )}
           {!currentAccount && (
             <>
-              <BottomNavigationAction label="Login" value="/login" icon={<LoginIcon />} />
-              <BottomNavigationAction label="Register" value="/register" icon={<PersonAddIcon />} />
+              <BottomNavigationAction 
+                label="Login" 
+                value="/login" 
+                icon={<LoginIcon />}
+                onClick={() => handleDirectClick('/login')}
+              />
+              <BottomNavigationAction 
+                label="Register" 
+                value="/register" 
+                icon={<PersonAddIcon />}
+                onClick={() => handleDirectClick('/register')}
+              />
             </>
           )}
         </BottomNavigation>

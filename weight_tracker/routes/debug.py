@@ -49,7 +49,7 @@ def database_info():
         
         # Get table counts
         result['table_counts'] = {
-            'entries': Entry.query.count(),
+            'entriess': Entry.query.count(),
             'goals': Goal.query.count(),
             'users': User.query.count(),
             'accounts': Account.query.count()
@@ -57,23 +57,42 @@ def database_info():
         
         # Get max IDs
         result['max_ids'] = {}
-        for table_name, model in [('entry', Entry), ('goal', Goal), ('user', User), ('account', Account)]:
-            max_id_result = db.session.execute(text(f"SELECT MAX(id) FROM {table_name}"))
+        # Note: "user" needs quotes because it's a reserved word in PostgreSQL
+        table_configs = [
+            ('entry', Entry, 'entry'), 
+            ('goal', Goal, 'goal'), 
+            ('user', User, '"user"'),  # Quoted for PostgreSQL 
+            ('account', Account, 'account')
+        ]
+        for table_name, model, sql_table_name in table_configs:
+            max_id_result = db.session.execute(text(f"SELECT MAX(id) FROM {sql_table_name}"))
             max_id = max_id_result.scalar()
             result['max_ids'][table_name] = max_id
         
         # If PostgreSQL, check sequence values
         if 'postgresql' in str(db_url.drivername):
             result['sequences'] = {}
-            for table_name in ['entry', 'goal', 'user', 'account']:
+            result['sequence_status'] = {}
+            for table_name, model, sql_table_name in table_configs:
                 try:
                     seq_result = db.session.execute(text(f"SELECT nextval('{table_name}_id_seq')"))
                     next_val = seq_result.scalar()
                     # Reset the sequence back one since we just incremented it with nextval
                     db.session.execute(text(f"SELECT setval('{table_name}_id_seq', {next_val - 1})"))
                     result['sequences'][f'{table_name}_id_seq'] = next_val - 1
+                    
+                    # Check if sequence needs fixing
+                    max_id = result['max_ids'][table_name] or 0
+                    needs_fix = next_val <= max_id
+                    result['sequence_status'][table_name] = {
+                        'max_id': max_id,
+                        'next_sequence_value': next_val,
+                        'needs_fix': needs_fix,
+                        'status': 'NEEDS_FIX' if needs_fix else 'OK'
+                    }
                 except Exception as e:
                     result['sequences'][f'{table_name}_id_seq'] = f'error: {str(e)}'
+                    result['sequence_status'][table_name] = {'status': 'ERROR', 'error': str(e)}
         
         return jsonify(result)
     except Exception as e:
@@ -91,10 +110,18 @@ def fix_sequences():
         
         results = {}
         
-        for table_name, model in [('entry', Entry), ('goal', Goal), ('user', User), ('account', Account)]:
+        # Use the same table configuration as database_info endpoint
+        table_configs = [
+            ('entry', Entry, 'entry'), 
+            ('goal', Goal, 'goal'), 
+            ('user', User, '"user"'),  # Quoted for PostgreSQL 
+            ('account', Account, 'account')
+        ]
+        
+        for table_name, model, sql_table_name in table_configs:
             try:
                 # Get the current max ID
-                max_id_result = db.session.execute(text(f"SELECT MAX(id) FROM {table_name}"))
+                max_id_result = db.session.execute(text(f"SELECT MAX(id) FROM {sql_table_name}"))
                 max_id = max_id_result.scalar()
                 
                 if max_id is None:

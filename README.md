@@ -8,8 +8,11 @@ A beautiful and simple web application to track your weight, body fat, and muscl
 - Set goals with target dates
 - Visualize your progress with interactive charts
 - Compare your actual progress against required progress to meet goals
-- Store all data locally in an SQLite database for privacy
-- Multi-user support with separate profiles
+- **Multi-database support**: SQLite for local development, PostgreSQL for production
+- **User authentication and authorization** with secure account management
+- Multi-user support with separate profiles per account
+- **Built-in database maintenance tools** for production deployments
+- Comprehensive error handling and logging
 
 ## Project Structure
 
@@ -19,15 +22,16 @@ The application has been refactored into a modular structure for better maintain
 weight_tracker/
 ├── __init__.py          # Application factory
 ├── config.py            # Configuration settings
-├── models.py            # Database models
+├── models.py            # Database models (User, Entry, Goal, Account)
 ├── utils.py             # Helper functions
 └── routes/              # API routes
     ├── __init__.py      # Blueprint registration
+    ├── auth.py          # Authentication endpoints
     ├── entries.py       # Weight entry endpoints
     ├── goals.py         # Goal tracking endpoints  
     ├── progress.py      # Progress calculation endpoints
     ├── users.py         # User management endpoints
-    └── debug.py         # Debug and status endpoints
+    └── debug.py         # Debug and database maintenance endpoints
 ```
 
 ### Frontend Structure
@@ -48,8 +52,10 @@ frontend/
     │   ├── GoalTable.jsx
     │   ├── Header.js
     │   ├── MobileNav.jsx
+    │   ├── ProtectedRoute.js
     │   └── UserSelector.jsx
     ├── contexts/        # React context providers
+    │   ├── AuthContext.js
     │   ├── SettingsContext.js
     │   ├── ThemeContext.js
     │   └── UserContext.js
@@ -63,10 +69,12 @@ frontend/
     │   ├── EditEntry.js
     │   ├── EditProfile.js
     │   ├── Goals.js
+    │   ├── Login.js
     │   ├── NewEntry.js
     │   ├── NewProfile.js
     │   ├── Profile.js
     │   ├── Progress.js
+    │   ├── Register.js
     │   └── Settings.js
     ├── services/        # API services
     │   └── api.js
@@ -136,42 +144,68 @@ If you prefer to set up the components separately, follow these steps:
 
 ## How to Use
 
-1. If tracking multiple users, create profiles in the "Profile" tab using "New Profile".
+1. **Create an account** using the register page, or log in if you already have one.
 
-2. Select the current user from the user selector in the header.
+2. **Create user profiles** in the "Profile" tab using "New Profile" if tracking multiple people.
 
-3. Enter your measurements in the "New Entry" tab.
+3. **Select the current user** from the user selector in the header.
 
-4. Set your goals in the "Goals" tab.
+4. **Enter your measurements** in the "New Entry" tab.
 
-5. View your progress charts and insights in the "Progress" and "Dashboard" tabs.
+5. **Set your goals** in the "Goals" tab.
 
-6. Adjust application settings in the "Settings" tab.
+6. **View your progress** charts and insights in the "Progress" and "Dashboard" tabs.
 
-7. Edit existing entries or profiles as needed using the edit options.
+7. **Adjust application settings** in the "Settings" tab.
 
-## Debug Mode
+8. **Edit existing entries or profiles** as needed using the edit options.
 
-The backend debug mode is enabled by default (DEBUG_MODE=True in config.py), providing detailed logging and access to debug API endpoints.
+## Debug Mode & Database Maintenance
+
+The application includes comprehensive debugging and database maintenance tools:
+
+### Debug Mode
+
+Backend debug mode provides detailed logging and access to debug API endpoints. Set `FLASK_ENV=development` to enable.
 
 For the frontend debug panel:
-
-1. Open the browser developer console (F12).
-
+1. Open the browser developer console (F12)
 2. Execute: `localStorage.setItem('debugMode', 'true')`
+3. Refresh the page
+4. The "Debug" tab will appear in the navigation
 
-3. Refresh the page.
+### Database Maintenance (Production)
 
-4. The "Debug" tab will appear in the navigation, showing server status, logs, environment info, etc.
+**Important**: If you encounter duplicate key errors in production, use these endpoints:
+
+#### Check Database Status
+```
+GET /api/debug/database-info
+```
+Returns current database status, table counts, and sequence information.
+
+#### Fix Database Sequences
+```
+POST /api/debug/fix-sequences
+```
+Automatically fixes PostgreSQL sequence issues that cause duplicate key violations.
+
+#### Health Check
+```
+GET /api/debug/health
+```
+Basic health and connectivity check.
+
+**Access via browser**: Visit `https://your-app-url.com/api/debug/database-info` to check status, then use developer console or curl to POST to fix-sequences if needed.
 
 Application logs are stored in `logs/app.log`.
 
-For additional troubleshooting, see DEBUG_GUIDE.md (note: some scripts mentioned may not be present in the current version).
-
 ## Technologies Used
 
-- Backend: Flask, SQLAlchemy, SQLite
-- Frontend: React, Chart.js, Material-UI
+- **Backend**: Flask, SQLAlchemy, PostgreSQL/SQLite, Flask-Login
+- **Frontend**: React, Chart.js, Material-UI
+- **Authentication**: Session-based with secure password hashing
+- **Database**: SQLite (development), PostgreSQL (production)
 
 ## Deployment to Render.com
 
@@ -194,10 +228,11 @@ If you encounter an error about missing Dockerfile, ensure you select "Python" a
    - **Start Command**: `gunicorn -b 0.0.0.0:$PORT weight_tracker:create_app`
 4. Set environment variables:
    - `FLASK_ENV`: `production`
+   - `SECRET_KEY`: `your-secret-key-here` (generate a secure random string)
    - `PYTHON_VERSION`: `3.11.0` (or your preferred version, optional)
 5. For database persistence, choose one of the options below.
 
-#### Option 1: SQLite with Persistent Disk (simplest, keeps original setup)
+#### Option 1: SQLite with Persistent Disk (simplest)
 
 - In the service settings, go to "Disks" and add a new disk:
   - Name: `data`
@@ -206,25 +241,41 @@ If you encounter an error about missing Dockerfile, ensure you select "Python" a
 - Add environment variable:
   - `DATABASE_URL`: `sqlite:////data/weight_tracker.db`
 
-This will store the SQLite database on a persistent disk.
-
-#### Option 2: PostgreSQL (recommended for better scalability)
+#### Option 2: PostgreSQL (recommended for production)
 
 - In Render, click "New" > "PostgreSQL" to create a new database.
 - Once created, copy the **External Database URL** from the database Info tab.
 - In your web service environment variables, add:
   - `DATABASE_URL`: `<your-postgres-url>` (paste the URL here)
 
-Render will automatically manage the database connection.
+**Important**: PostgreSQL deployments may occasionally experience sequence synchronization issues. If you encounter duplicate key errors, use the database maintenance endpoints described above.
 
 6. Click "Create Web Service".
 7. Once deployed, your app will be available at the provided Render URL.
 
+### Post-Deployment: Database Sequence Maintenance
+
+**If you encounter "duplicate key value violates unique constraint" errors**:
+
+1. Visit `https://your-app-url.onrender.com/api/debug/database-info` to check sequence status
+2. If any sequences show "needs_fix": true, run the fix:
+   ```bash
+   curl -X POST https://your-app-url.onrender.com/api/debug/fix-sequences
+   ```
+3. Or use browser developer console:
+   ```javascript
+   fetch('/api/debug/fix-sequences', { method: 'POST' })
+     .then(r => r.json())
+     .then(data => console.log(data));
+   ```
+
+This is a one-time fix that resolves PostgreSQL auto-increment sequence synchronization issues.
+
 ### Alternative: Deploy with Docker
 
-If you prefer to use Docker (or if the Python runtime doesn't work), add a `Dockerfile` to the project root with the following content:
+If you prefer to use Docker:
 
-```
+```dockerfile
 FROM python:3.11-slim
 
 # Install Node.js and npm
@@ -249,26 +300,6 @@ EXPOSE $PORT
 CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "weight_tracker:create_app"]
 ```
 
-Then, in Render:
-
-1. Select **Runtime**: Docker
-2. The build and start commands can be left blank as they will be handled by the Dockerfile.
-3. Set the same environment variables as above.
-4. Configure the disk or PostgreSQL as described.
-5. Create the service.
-
-This Dockerfile ensures both Python and Node.js are available for building the app.
-
-### Notes
-
-- The app serves the frontend from the backend in production, using the built files from `frontend/build`.
-- For production, debug mode is disabled via `FLASK_ENV=production`.
-- If using PostgreSQL, ensure `psycopg2-binary` is in `requirements.txt` (it should be added already).
-- Access the app at the Render-provided domain (e.g., your-app.onrender.com).
-- For custom domains, configure in Render settings.
-
-For any deployment issues, check the Render logs and ensure all commands execute successfully.
-
 ## PostgreSQL Logging on Render
 
 To monitor database operations in your Render logs:
@@ -287,7 +318,7 @@ When `LOG_SQL` is enabled, the Render logs will show:
 
 Example log entries:
 ```
-2024-01-15 10:30:45 - INFO - New entry added: ID=123, weight=75.5kg, user_id=1, date=2024-01-15
+2024-01-15 10:30:45 - INFO - New entry added: ID=123, weight=75.5kg, user_id=1, account_id=5, date=2024-01-15
 2024-01-15 10:31:20 - INFO - Entry updated: ID=123, changes=[weight: 75.5 → 74.8]
 2024-01-15 10:32:00 - INFO - Goal deleted: ID=45, target_date=2024-06-01, user_id=1
 ```
@@ -305,4 +336,16 @@ Example log entries:
 3. Click on "Logs" in the left sidebar
 4. You'll see all application logs including database operations
 
-The logs automatically show when users add, modify, or delete entries, goals, and user profiles.
+## Troubleshooting
+
+### Common Issues
+
+**Duplicate Key Violations**: Use the database maintenance endpoints described above.
+
+**Authentication Issues**: Ensure `SECRET_KEY` environment variable is set in production.
+
+**Database Connection Issues**: Check your `DATABASE_URL` environment variable and database service status.
+
+**Build Failures**: Ensure all dependencies in `requirements.txt` and `package.json` are compatible with your Python/Node versions.
+
+For detailed debugging, see `DEBUG_GUIDE.md`.

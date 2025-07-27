@@ -37,6 +37,8 @@ def add_user():
         db.session.add(new_user)
         db.session.commit()
         
+        logger.info(f"New user created: ID={new_user.id}, name={new_user.name}, account_id={current_user.id}")
+        
         return jsonify(new_user.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -65,18 +67,30 @@ def update_user(user_id):
             return jsonify({'error': 'User not found'}), 404
             
         data = request.json
+        updates = []
         
         # Update user fields if provided
         if 'name' in data:
+            old_name = user.name
             user.name = data['name']
+            updates.append(f"name: {old_name} → {user.name}")
         if 'age' in data:
-            user.age = data['age']
+            old_age = user.age
+            user.age = int(data['age']) if data['age'] else None
+            updates.append(f"age: {old_age} → {user.age}")
         if 'sex' in data:
+            old_sex = user.sex
             user.sex = data['sex']
+            updates.append(f"sex: {old_sex} → {user.sex}")
         if 'height' in data:
-            user.height = data['height']
+            old_height = user.height
+            user.height = float(data['height']) if data['height'] else None
+            updates.append(f"height: {old_height} → {user.height}")
             
         db.session.commit()
+        
+        logger.info(f"User updated: ID={user_id}, changes=[{', '.join(updates)}]")
+        
         return jsonify(user.to_dict())
     except Exception as e:
         db.session.rollback()
@@ -91,12 +105,20 @@ def delete_user(user_id):
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
+        logger.info(f"Deleting user and associated data: ID={user_id}, name={user.name}, account_id={current_user.id}")
+        
         # Delete user's entries and goals
+        entry_count = Entry.query.filter_by(user_id=user_id).count()
+        goal_count = Goal.query.filter_by(user_id=user_id).count()
+        
         Entry.query.filter_by(user_id=user_id).delete()
         Goal.query.filter_by(user_id=user_id).delete()
         
         db.session.delete(user)
         db.session.commit()
+        
+        logger.info(f"User ID {user_id} deleted successfully along with {entry_count} entries and {goal_count} goals")
+        
         return jsonify({'message': 'User and associated data deleted successfully'})
     except Exception as e:
         db.session.rollback()

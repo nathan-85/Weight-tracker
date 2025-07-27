@@ -1,35 +1,36 @@
-from flask import Blueprint, jsonify, current_app
-from weight_tracker.config import logger, DEBUG_MODE, log_file
+from flask import Blueprint, jsonify
+from weight_tracker.models import db
+from weight_tracker.config import logger, DEBUG_MODE
+from datetime import datetime
+import os
+import psutil
 
 debug_bp = Blueprint('debug', __name__, url_prefix='/api/debug')
 
-@debug_bp.route('/status', methods=['GET'])
-def server_status():
+@debug_bp.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
     try:
-        # Check if debug mode is enabled
-        debug_mode_enabled = DEBUG_MODE
-        
-        # Return basic server status info
-        status = {
-            "status": "running",
-            "debug_mode": debug_mode_enabled,
-            "database_uri": current_app.config['SQLALCHEMY_DATABASE_URI']
-        }
-        
-        # Only include logs if debug mode is enabled
-        if debug_mode_enabled:
-            try:
-                with open(log_file, 'r') as f:
-                    # Get last 100 lines of log
-                    logs = f.readlines()[-100:]
-                status["logs"] = logs
-            except Exception as e:
-                logger.error(f"Error reading log file: {str(e)}")
-                status["logs_error"] = str(e)
-        else:
-            status["warning"] = "Debug mode is disabled. Enable DEBUG_MODE=true to see detailed logs."
-        
-        return jsonify(status)
+        # Test database connection
+        db.session.execute('SELECT 1')
+        db_status = 'connected'
     except Exception as e:
-        logger.error(f"Error retrieving server status: {str(e)}")
-        return jsonify({"error": "Failed to retrieve server status"}), 500
+        logger.error(f"Database health check failed: {e}")
+        db_status = f'error: {str(e)}'
+    
+    # Get system info
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory()
+    
+    return jsonify({
+        'status': 'healthy',
+        'debug_mode': DEBUG_MODE,
+        'database': db_status,
+        'timestamp': datetime.utcnow().isoformat(),
+        'system': {
+            'cpu_percent': cpu_percent,
+            'memory_percent': memory.percent,
+            'memory_available_mb': memory.available / (1024 * 1024)
+        },
+        'environment': os.environ.get('FLASK_ENV', 'unknown')
+    })

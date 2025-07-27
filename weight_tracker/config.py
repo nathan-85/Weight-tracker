@@ -30,3 +30,7 @@ else:
 # Database configuration
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///weight_tracker.db')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+# Enable SQL query logging for PostgreSQL
+# Set LOG_SQL to 'true' in Render environment variables to see all SQL queries
+SQLALCHEMY_ECHO = os.environ.get('LOG_SQL', 'false').lower() == 'true' or DEBUG_MODE

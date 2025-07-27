@@ -105,6 +105,8 @@ def add_goal():
             # Refresh the goal
             created_goal = Goal.query.get(goal_id)
         
+        logger.info(f"New goal added: ID={goal_id}, target_date={target_date}, target_weight={target_weight}kg, user_id={user_id}")
+        
         # Return the created goal
         return jsonify(created_goal.to_dict()), 201
     except Exception as e:
@@ -118,10 +120,14 @@ def delete_goal(goal_id):
         goal = Goal.query.get(goal_id)
         if not goal:
             return jsonify({'error': 'Goal not found'}), 404
+            
+        logger.info(f"Deleting goal: ID={goal_id}, target_date={goal.target_date.strftime('%Y-%m-%d')}, user_id={goal.user_id}")
         
         db.session.delete(goal)
         db.session.commit()
-        return jsonify({'message': 'Goal deleted successfully'})
+        
+        logger.info(f"Goal ID {goal_id} deleted successfully")
+        return '', 204
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error deleting goal: {e}")
@@ -130,35 +136,49 @@ def delete_goal(goal_id):
 @goals_bp.route('/<int:goal_id>', methods=['PUT'])
 def update_goal(goal_id):
     try:
-        goal = Goal.query.get_or_404(goal_id)
+        goal = Goal.query.get(goal_id)
+        if not goal:
+            return jsonify({'error': 'Goal not found'}), 404
+            
         data = request.json
+        updates = []
         
-        # Update fields if they exist in the request
+        # Update goal fields if provided
         if 'target_date' in data:
             try:
+                old_date = goal.target_date.strftime('%Y-%m-%d')
                 goal.target_date = datetime.strptime(data['target_date'], '%Y-%m-%d')
+                updates.append(f"target_date: {old_date} → {data['target_date']}")
             except ValueError:
-                return jsonify({'error': 'Invalid date format for target_date. Use YYYY-MM-DD'}), 400
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
         
-        if 'start_date' in data:
-            try:
-                goal.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
-            except ValueError:
-                return jsonify({'error': 'Invalid date format for start_date. Use YYYY-MM-DD'}), 400
-                
         if 'target_weight' in data:
-            goal.target_weight = float(data['target_weight']) if data['target_weight'] is not None else None
-            
+            old_weight = goal.target_weight
+            goal.target_weight = float(data['target_weight']) if data['target_weight'] else None
+            updates.append(f"target_weight: {old_weight} → {goal.target_weight}")
+        
         if 'target_fat_percentage' in data:
-            goal.target_fat_percentage = float(data['target_fat_percentage']) if data['target_fat_percentage'] is not None else None
-            
+            old_fat = goal.target_fat_percentage
+            goal.target_fat_percentage = float(data['target_fat_percentage']) if data['target_fat_percentage'] else None
+            updates.append(f"target_fat: {old_fat} → {goal.target_fat_percentage}")
+        
         if 'target_muscle_mass' in data:
-            goal.target_muscle_mass = float(data['target_muscle_mass']) if data['target_muscle_mass'] is not None else None
-            
+            old_muscle = goal.target_muscle_mass
+            goal.target_muscle_mass = float(data['target_muscle_mass']) if data['target_muscle_mass'] else None
+            updates.append(f"target_muscle: {old_muscle} → {goal.target_muscle_mass}")
+        
         if 'description' in data:
-            goal.description = data.get('description', None)
+            goal.description = data['description']
+            updates.append(f"description updated")
+        
+        if 'user_id' in data:
+            old_user = goal.user_id
+            goal.user_id = data['user_id']
+            updates.append(f"user_id: {old_user} → {goal.user_id}")
             
         db.session.commit()
+        
+        logger.info(f"Goal updated: ID={goal_id}, changes=[{', '.join(updates)}]")
         
         return jsonify(goal.to_dict())
     except Exception as e:

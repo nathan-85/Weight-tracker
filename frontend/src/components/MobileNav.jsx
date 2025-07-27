@@ -17,6 +17,7 @@ import {
   PersonAdd as PersonAddIcon
 } from '@mui/icons-material';
 import { AuthContext } from '../contexts/AuthContext';
+import { useUserContext } from '../contexts/UserContext';
 
 /**
  * MobileNav
@@ -29,6 +30,8 @@ const MobileNav = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { currentAccount } = useContext(AuthContext);
+  const { users } = useUserContext();
+  const hasProfiles = users.length > 0;
 
   // Keep track of current tab based on route
   const [value, setValue] = useState(location.pathname);
@@ -101,24 +104,28 @@ const MobileNav = () => {
         >
           {currentAccount && (
             <>
-              <BottomNavigationAction 
-                label="Home" 
-                value="/" 
-                icon={<DashboardIcon />}
-                onClick={() => handleDirectClick('/')}
-              />
-              <BottomNavigationAction 
-                label="Add" 
-                value="/new-entry" 
-                icon={<AddIcon />}
-                onClick={() => handleDirectClick('/new-entry')}
-              />
-              <BottomNavigationAction 
-                label="Progress" 
-                value="/progress" 
-                icon={<ChartIcon />}
-                onClick={() => handleDirectClick('/progress')}
-              />
+              {hasProfiles && (
+                <>
+                  <BottomNavigationAction 
+                    label="Home" 
+                    value="/" 
+                    icon={<DashboardIcon />}
+                    onClick={() => handleDirectClick('/')}
+                  />
+                  <BottomNavigationAction 
+                    label="Add" 
+                    value="/new-entry" 
+                    icon={<AddIcon />}
+                    onClick={() => handleDirectClick('/new-entry')}
+                  />
+                  <BottomNavigationAction 
+                    label="Progress" 
+                    value="/progress" 
+                    icon={<ChartIcon />}
+                    onClick={() => handleDirectClick('/progress')}
+                  />
+                </>
+              )}
               <BottomNavigationAction 
                 label="Profile" 
                 value="/profile" 

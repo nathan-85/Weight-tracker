@@ -13,7 +13,7 @@ const Register = () => {
     e.preventDefault();
     try {
       await signUp({ username, password });
-      navigate('/');
+      navigate('/profile/new');
     } catch (error) {
       alert('Registration failed');
     }

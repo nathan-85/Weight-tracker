@@ -41,15 +41,6 @@ import { useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 // import { format } from 'date-fns';
 
-const navItems = [
-  { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
-  { name: 'New Entry', path: '/new-entry', icon: <AddIcon /> },
-  { name: 'Goals', path: '/goals', icon: <FlagIcon /> },
-  { name: 'Progress', path: '/progress', icon: <ChartIcon /> },
-  { name: 'Profile', path: '/profile', icon: <PersonIcon /> },
-  { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
-];
-
 const Header = ({ isDebugMode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -60,6 +51,7 @@ const Header = ({ isDebugMode }) => {
   const [showDebugMode, setShowDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
   const { users, currentUser, switchUser } = useUserContext();
+  const hasProfiles = users.length > 0;
   const { darkMode, toggleDarkMode } = useThemeContext();
   const { signOut, currentAccount } = useContext(AuthContext);
   
@@ -103,13 +95,40 @@ const Header = ({ isDebugMode }) => {
     // Optional: navigate('/login') if needed, but ProtectedRoute will handle redirects
   };
 
+  // Define navigation items based on profile availability
+  let drawerNavItems = [
+    { name: 'Profile', path: '/profile', icon: <PersonIcon /> },
+    { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+  ];
+  let desktopMenuItems = [
+    { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
+    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  ];
+
+  if (hasProfiles) {
+    drawerNavItems = [
+      { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
+      { name: 'New Entry', path: '/new-entry', icon: <AddIcon /> },
+      { name: 'Goals', path: '/goals', icon: <FlagIcon /> },
+      { name: 'Progress', path: '/progress', icon: <ChartIcon /> },
+      ...drawerNavItems,
+    ];
+    desktopMenuItems = [
+      { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+      { text: 'New Entry', icon: <AddIcon />, path: '/new-entry' },
+      { text: 'Goals', icon: <FlagIcon />, path: '/goals' },
+      { text: 'Progress', icon: <ChartIcon />, path: '/progress' },
+      ...desktopMenuItems,
+    ];
+  }
+
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Typography variant="h6" sx={{ my: 2 }}>
         Weight Tracker
       </Typography>
       <List>
-        {navItems.map((item) => (
+        {drawerNavItems.map((item) => (
           <ListItem
             button
             component={RouterLink}
@@ -130,15 +149,6 @@ const Header = ({ isDebugMode }) => {
       </List>
     </Box>
   );
-
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'New Entry', icon: <AddIcon />, path: '/new-entry' },
-    { text: 'Goals', icon: <FlagIcon />, path: '/goals' },
-    { text: 'Progress', icon: <ChartIcon />, path: '/progress' },
-    { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
-  ];
 
   // const isActive = (path) => {
   //   return location.pathname === path;
@@ -179,22 +189,36 @@ const Header = ({ isDebugMode }) => {
           
           {/* User selector */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 'auto' }}>
-            {currentAccount && currentUser && (
+            {currentAccount && (
               <Tooltip title="Click to change user or manage profile">
                 <Button 
                   onClick={handleUserMenuOpen}
                   startIcon={
-                    <Avatar 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        bgcolor: 'primary.main',
-                        fontSize: '1rem',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      {getUserInitials(currentUser.name)}
-                    </Avatar>
+                    hasProfiles ? (
+                      <Avatar 
+                        sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          bgcolor: 'primary.main',
+                          fontSize: '1rem',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                      >
+                        {getUserInitials(currentUser.name)}
+                      </Avatar>
+                    ) : (
+                      <Avatar 
+                        sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          bgcolor: 'grey.400',
+                          fontSize: '1rem',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                      >
+                        <AddPersonIcon />
+                      </Avatar>
+                    )
                   }
                   sx={{ 
                     textTransform: 'none', 
@@ -207,7 +231,7 @@ const Header = ({ isDebugMode }) => {
                     px: 2
                   }}
                 >
-                  {currentUser.name}
+                  {hasProfiles ? currentUser?.name : 'No Profiles'}
                 </Button>
               </Tooltip>
             )}
@@ -269,7 +293,7 @@ const Header = ({ isDebugMode }) => {
           
           {!isMobile && (
             <Box sx={{ display: 'flex' }}>
-              {currentAccount && menuItems.map((item) => (
+              {currentAccount && desktopMenuItems.map((item) => (
                 <Button
                   key={item.text}
                   component={RouterLink}

@@ -32,11 +32,11 @@ function App() {
           <Header isDebugMode={isDebugMode} />
           <Container component="main" sx={{ flexGrow: 1, py: 3, px: { xs: 2, sm: 3, md: 4 }, maxWidth: '100% !important' }}>
             <Routes>
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/new-entry" element={<ProtectedRoute><NewEntry /></ProtectedRoute>} />
-              <Route path="/edit-entry/:entryId" element={<ProtectedRoute><EditEntry /></ProtectedRoute>} />
-              <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
-              <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute requiresProfile><Dashboard /></ProtectedRoute>} />
+              <Route path="/new-entry" element={<ProtectedRoute requiresProfile><NewEntry /></ProtectedRoute>} />
+              <Route path="/edit-entry/:entryId" element={<ProtectedRoute requiresProfile><EditEntry /></ProtectedRoute>} />
+              <Route path="/goals" element={<ProtectedRoute requiresProfile><Goals /></ProtectedRoute>} />
+              <Route path="/progress" element={<ProtectedRoute requiresProfile><Progress /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               {isDebugMode && <Route path="/debug" element={<ProtectedRoute><Debug /></ProtectedRoute>} />}
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

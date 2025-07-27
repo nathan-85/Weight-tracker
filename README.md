@@ -268,3 +268,41 @@ This Dockerfile ensures both Python and Node.js are available for building the a
 - For custom domains, configure in Render settings.
 
 For any deployment issues, check the Render logs and ensure all commands execute successfully.
+
+## PostgreSQL Logging on Render
+
+To monitor database operations in your Render logs:
+
+### Enable SQL Query Logging
+
+Add this environment variable in your Render dashboard:
+- `LOG_SQL`: Set to `true` to log all SQL queries in the Render logs
+
+### What You'll See
+
+When `LOG_SQL` is enabled, the Render logs will show:
+- All SQL queries executed by your application
+- Database connection information
+- Detailed logs for data modifications (INSERT, UPDATE, DELETE) with record IDs and values
+
+Example log entries:
+```
+2024-01-15 10:30:45 - INFO - New entry added: ID=123, weight=75.5kg, user_id=1, date=2024-01-15
+2024-01-15 10:31:20 - INFO - Entry updated: ID=123, changes=[weight: 75.5 → 74.8]
+2024-01-15 10:32:00 - INFO - Goal deleted: ID=45, target_date=2024-06-01, user_id=1
+```
+
+### Performance Considerations
+
+- In production, keep `LOG_SQL` set to `false` to avoid performance impact and log clutter
+- The application always logs important operations (data adds/updates/deletes) regardless of this setting
+- Use `LOG_SQL=true` temporarily when debugging database issues
+
+### Viewing Logs
+
+1. Go to your Render dashboard
+2. Select your web service
+3. Click on "Logs" in the left sidebar
+4. You'll see all application logs including database operations
+
+The logs automatically show when users add, modify, or delete entries, goals, and user profiles.

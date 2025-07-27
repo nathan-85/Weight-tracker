@@ -12,6 +12,9 @@ class Account(db.Model, UserMixin):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Relationship to access users belonging to this account
+    users = db.relationship('User', backref='account', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

@@ -11,10 +11,8 @@ import {
 import {
   Dashboard as DashboardIcon,
   AddCircleOutline as AddIcon,
-  Flag as FlagIcon,
   ShowChart as ChartIcon,
   Person as PersonIcon,
-  Settings as SettingsIcon,
   Login as LoginIcon,
   PersonAdd as PersonAddIcon
 } from '@mui/icons-material';

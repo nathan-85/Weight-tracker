@@ -89,49 +89,26 @@ def add_goal():
         description = data.get('description')
         created_at = datetime.now()
         
-        # Use raw SQL to insert the goal with all fields including start_date
-        insert_stmt = text("""
-            INSERT INTO goal (target_date, start_date, target_weight, target_fat_percentage, 
-                             target_muscle_mass, description, user_id, created_at)
-            VALUES (:target_date, :start_date, :target_weight, :target_fat_percentage,
-                   :target_muscle_mass, :description, :user_id, :created_at)
-        """)
+        # Use SQLAlchemy ORM instead of raw SQL to avoid sequence synchronization issues
+        goal = Goal(
+            target_date=target_date,
+            start_date=start_date,
+            target_weight=target_weight,
+            target_fat_percentage=target_fat_percentage,
+            target_muscle_mass=target_muscle_mass,
+            description=description,
+            user_id=requested_user_id,
+            created_at=created_at
+        )
         
-        result = db.session.execute(insert_stmt, {
-            'target_date': target_date,
-            'start_date': start_date,
-            'target_weight': target_weight,
-            'target_fat_percentage': target_fat_percentage,
-            'target_muscle_mass': target_muscle_mass,
-            'description': description,
-            'user_id': requested_user_id,
-            'created_at': created_at
-        })
+        db.session.add(goal)
         db.session.commit()
+        db.session.refresh(goal)  # Ensure we have the committed state with the correct ID
         
-        # Get the ID of the inserted row
-        goal_id = result.lastrowid
-        
-        # Retrieve the goal to return it
-        created_goal = Goal.query.get(goal_id)
-        
-        if created_goal is None:
-            logger.error(f"Failed to retrieve created goal with ID {goal_id}")
-            return jsonify({'error': 'Goal was created but could not be retrieved'}), 500
-        
-        # Check if start_date is set, and if not, fix it
-        if created_goal.start_date is None:
-            logger.warning(f"start_date is NULL for goal {goal_id}, fixing...")
-            fix_stmt = text("UPDATE goal SET start_date = :start_date WHERE id = :id")
-            db.session.execute(fix_stmt, {'start_date': start_date, 'id': goal_id})
-            db.session.commit()
-            # Refresh the goal
-            db.session.refresh(created_goal)
-        
-        logger.info(f"New goal added: ID={goal_id}, target_date={target_date}, target_weight={target_weight}kg, user_id={requested_user_id}")
+        logger.info(f"New goal added: ID={goal.id}, target_date={target_date}, target_weight={target_weight}kg, user_id={requested_user_id}")
         
         # Return the created goal
-        return jsonify(created_goal.to_dict()), 201
+        return jsonify(goal.to_dict()), 201
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error adding goal: {e}")

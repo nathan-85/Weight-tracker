@@ -22,13 +22,17 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   AdminPanelSettings as AdminIcon,
   Person as PersonIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import { AuthContext } from '../contexts/AuthContext';
 import { getAdminAccounts, adminDeleteAccount } from '../services/api';
@@ -36,12 +40,14 @@ import { getAdminAccounts, adminDeleteAccount } from '../services/api';
 const Admin = () => {
   const { currentAccount } = useContext(AuthContext);
   const [accounts, setAccounts] = useState([]);
+  const [filteredAccounts, setFilteredAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadAccounts = async () => {
     try {
@@ -49,6 +55,7 @@ const Admin = () => {
       setError(null);
       const response = await getAdminAccounts();
       setAccounts(response.accounts);
+      setFilteredAccounts(response.accounts);
     } catch (err) {
       setError('Failed to load accounts. Make sure you have admin privileges.');
       console.error('Error loading accounts:', err);
@@ -56,6 +63,18 @@ const Admin = () => {
       setLoading(false);
     }
   };
+
+  // Filter accounts based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredAccounts(accounts);
+    } else {
+      const filtered = accounts.filter(account =>
+        account.username.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredAccounts(filtered);
+    }
+  }, [accounts, searchTerm]);
 
   useEffect(() => {
     loadAccounts();
@@ -95,6 +114,14 @@ const Admin = () => {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
   };
 
   const formatDate = (dateString) => {
@@ -143,9 +170,48 @@ const Admin = () => {
 
       <Card>
         <CardContent>
-          <Typography variant="h6" component="h2" gutterBottom>
-            Account Management
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" component="h2">
+              Account Management
+            </Typography>
+            
+            {/* Search Bar */}
+            <TextField
+              size="small"
+              placeholder="Search by username..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={handleClearSearch}
+                      edge="end"
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{ minWidth: 250 }}
+            />
+          </Box>
+          
+          {/* Results summary */}
+          {searchTerm && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Showing {filteredAccounts.length} of {accounts.length} accounts
+                {filteredAccounts.length !== accounts.length && ` matching "${searchTerm}"`}
+              </Typography>
+            </Box>
+          )}
           
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -165,7 +231,7 @@ const Admin = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {accounts.map((account) => (
+                  {filteredAccounts.map((account) => (
                     <TableRow key={account.id}>
                       <TableCell>{account.id}</TableCell>
                       <TableCell>
@@ -234,11 +300,26 @@ const Admin = () => {
             </TableContainer>
           )}
           
-          {!loading && accounts.length === 0 && (
+          {!loading && filteredAccounts.length === 0 && !searchTerm && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography variant="body1" color="text.secondary">
                 No accounts found.
               </Typography>
+            </Box>
+          )}
+          
+          {!loading && filteredAccounts.length === 0 && searchTerm && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                No accounts found matching "{searchTerm}".
+              </Typography>
+              <Button 
+                variant="text" 
+                onClick={handleClearSearch}
+                sx={{ mt: 1 }}
+              >
+                Clear search
+              </Button>
             </Box>
           )}
         </CardContent>

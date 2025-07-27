@@ -58,7 +58,7 @@ def create_app():
     
     # Frontend routes - serve React app for all frontend paths
     frontend_routes = [
-        '/goals', '/profile', '/settings', '/progress', '/new-entry', '/login', '/register', '/debug',
+        '/goals', '/profile', '/settings', '/progress', '/new-entry', '/login', '/register', '/debug', '/admin',
         '/profile/new', '/profile/edit/<int:user_id>', '/edit-entry/<int:entry_id>'
     ]
     

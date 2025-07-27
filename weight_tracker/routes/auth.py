@@ -154,7 +154,7 @@ def admin_list_accounts():
             Account.is_admin,
             Account.created_at,
             db.func.count(User.id).label('user_count')
-        ).outerjoin(User).group_by(Account.id).all()
+        ).outerjoin(User).group_by(Account.id).order_by(Account.id.desc()).all()
         
         account_list = []
         for account in accounts:

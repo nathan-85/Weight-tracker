@@ -12,6 +12,7 @@ export const useUsers = () => {
       setLoading(true);
       const data = await getUsers();
       setUsers(data);
+      setError(null); // Clear error on successful load
       
       // If there's only one user, select it automatically
       if (data.length === 1) {

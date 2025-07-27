@@ -78,6 +78,7 @@ const Dashboard = () => {
       setLoading(true);
       const data = await getEntries(currentUser?.id);
       setEntries(data);
+      setError(null); // Clear error on successful load
     } catch (err) {
       setError('Failed to load entries');
       console.error(err);

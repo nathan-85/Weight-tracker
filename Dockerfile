@@ -18,5 +18,5 @@ RUN cd frontend && npm install && npm run build
 # Expose the port
 EXPOSE $PORT
 
-# Run the application
-CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "weight_tracker:create_app"] 
+# Run the application using the proper WSGI entry point
+CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "wsgi:application"] 

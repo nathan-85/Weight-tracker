@@ -225,7 +225,7 @@ If you encounter an error about missing Dockerfile, ensure you select "Python" a
 3. Configure the service:
    - **Runtime**: Python
    - **Build Command**: `pip install -r requirements.txt && cd frontend && npm install && npm run build`
-   - **Start Command**: `gunicorn -b 0.0.0.0:$PORT weight_tracker:create_app`
+   - **Start Command**: `gunicorn -b 0.0.0.0:$PORT wsgi:application`
 4. Set environment variables:
    - `FLASK_ENV`: `production`
    - `SECRET_KEY`: `your-secret-key-here` (generate a secure random string)

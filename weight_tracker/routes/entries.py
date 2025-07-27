@@ -2,24 +2,32 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from weight_tracker.models import db, Entry
 from weight_tracker.config import logger
-from flask_login import current_user
+from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 entries_bp = Blueprint('entries', __name__, url_prefix='/api/entries')
 
 @entries_bp.route('', methods=['GET'])
+@login_required
 def get_entries():
     try:
-        logger.info("Processing GET request for entries")
-        entries = Entry.query.order_by(Entry.date).all()
+        logger.info(f"Processing GET request for entries for user {current_user.id}")
+        # Get all entries for users belonging to the current account
+        user_ids = [user.id for user in current_user.users]
+        if not user_ids:
+            logger.warning(f"No users found for account {current_user.id}")
+            return jsonify([])
+        
+        entries = Entry.query.filter(Entry.user_id.in_(user_ids)).order_by(Entry.date.desc()).all()
         result = [entry.to_dict() for entry in entries]
-        logger.debug(f"Retrieved {len(result)} entries")
+        logger.debug(f"Retrieved {len(result)} entries for account {current_user.id}")
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error retrieving entries: {str(e)}")
         return jsonify({"error": "Failed to retrieve entries"}), 500
 
 @entries_bp.route('', methods=['POST'])
+@login_required
 def add_entry():
     try:
         data = request.json
@@ -27,6 +35,17 @@ def add_entry():
         # Validate required fields
         if not data.get('weight'):
             return jsonify({'error': 'Weight is required'}), 400
+        
+        if not data.get('user_id'):
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # Validate that the user_id belongs to the current account
+        user_ids = [user.id for user in current_user.users]
+        requested_user_id = int(data.get('user_id'))
+        
+        if requested_user_id not in user_ids:
+            logger.warning(f"Account {current_user.id} attempted to create entry for unauthorized user {requested_user_id}")
+            return jsonify({'error': 'User not found or access denied'}), 404
         
         # Parse date (if provided) or use current date
         entry_date = data.get('date')
@@ -38,9 +57,6 @@ def add_entry():
         else:
             entry_date = datetime.now()
         
-        # Get account_id from current_user if authenticated, otherwise None for backward compatibility
-        account_id = current_user.id if current_user.is_authenticated else None
-        
         # Create new entry
         new_entry = Entry(
             date=entry_date,
@@ -48,8 +64,8 @@ def add_entry():
             neck=float(data.get('neck')) if data.get('neck') else None,
             belly=float(data.get('belly')) if data.get('belly') else None,
             hip=float(data.get('hip')) if data.get('hip') else None,
-            user_id=data.get('user_id'),  # This can be null for backward compatibility
-            account_id=account_id
+            user_id=requested_user_id,
+            account_id=current_user.id
         )
         
         db.session.add(new_entry)
@@ -76,13 +92,22 @@ def add_entry():
         return jsonify({'error': 'Failed to add entry'}), 500
 
 @entries_bp.route('/<int:entry_id>', methods=['DELETE'])
+@login_required
 def delete_entry(entry_id):
     try:
-        logger.info(f"Processing DELETE request for entry ID: {entry_id}")
-        entry = Entry.query.get_or_404(entry_id)
+        logger.info(f"Processing DELETE request for entry ID: {entry_id} by account {current_user.id}")
+        
+        # Get all user IDs for the current account
+        user_ids = [user.id for user in current_user.users]
+        
+        # Find entry and verify it belongs to the current account
+        entry = Entry.query.filter(Entry.id == entry_id, Entry.user_id.in_(user_ids)).first()
+        if not entry:
+            logger.warning(f"Entry {entry_id} not found or access denied for account {current_user.id}")
+            return jsonify({'error': 'Entry not found'}), 404
         
         # Log entry details before deletion
-        logger.info(f"Deleting entry: ID={entry_id}, weight={entry.weight}kg, date={entry.date.strftime('%Y-%m-%d')}")
+        logger.info(f"Deleting entry: ID={entry_id}, weight={entry.weight}kg, date={entry.date.strftime('%Y-%m-%d')}, user_id={entry.user_id}")
         
         db.session.delete(entry)
         db.session.commit()
@@ -93,10 +118,18 @@ def delete_entry(entry_id):
         return jsonify({"error": "Failed to delete entry"}), 500
 
 @entries_bp.route('/<int:entry_id>', methods=['PUT'])
+@login_required
 def update_entry(entry_id):
     try:
-        entry = Entry.query.get(entry_id)
+        logger.info(f"Processing PUT request for entry ID: {entry_id} by account {current_user.id}")
+        
+        # Get all user IDs for the current account
+        user_ids = [user.id for user in current_user.users]
+        
+        # Find entry and verify it belongs to the current account
+        entry = Entry.query.filter(Entry.id == entry_id, Entry.user_id.in_(user_ids)).first()
         if not entry:
+            logger.warning(f"Entry {entry_id} not found or access denied for account {current_user.id}")
             return jsonify({'error': 'Entry not found'}), 404
             
         data = request.json

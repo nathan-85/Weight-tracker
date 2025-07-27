@@ -2,15 +2,23 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from weight_tracker.models import db, Goal
 from weight_tracker.config import logger
+from flask_login import current_user, login_required
 from sqlalchemy import text
 
 goals_bp = Blueprint('goals', __name__, url_prefix='/api/goals')
 
 @goals_bp.route('', methods=['GET'])
+@login_required
 def get_goals():
     try:
-        logger.info("Processing GET request for goals")
-        goals = Goal.query.order_by(Goal.target_date).all()
+        logger.info(f"Processing GET request for goals for account {current_user.id}")
+        # Get all goals for users belonging to the current account
+        user_ids = [user.id for user in current_user.users]
+        if not user_ids:
+            logger.warning(f"No users found for account {current_user.id}")
+            return jsonify([])
+        
+        goals = Goal.query.filter(Goal.user_id.in_(user_ids)).order_by(Goal.target_date).all()
         
         # Convert each goal to dict and ensure start_date is included
         result = []
@@ -27,13 +35,14 @@ def get_goals():
                     
             result.append(goal_dict)
             
-        logger.debug(f"Retrieved {len(result)} goals")
+        logger.debug(f"Retrieved {len(result)} goals for account {current_user.id}")
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error retrieving goals: {str(e)}")
         return jsonify({"error": "Failed to retrieve goals"}), 500
 
 @goals_bp.route('', methods=['POST'])
+@login_required
 def add_goal():
     try:
         data = request.json
@@ -41,6 +50,17 @@ def add_goal():
         # Validate required fields (at least one target must be set)
         if not any([data.get('target_weight'), data.get('target_fat_percentage'), data.get('target_muscle_mass')]):
             return jsonify({'error': 'At least one target (weight, fat percentage, or muscle mass) is required'}), 400
+        
+        if not data.get('user_id'):
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # Validate that the user_id belongs to the current account
+        user_ids = [user.id for user in current_user.users]
+        requested_user_id = int(data.get('user_id'))
+        
+        if requested_user_id not in user_ids:
+            logger.warning(f"Account {current_user.id} attempted to create goal for unauthorized user {requested_user_id}")
+            return jsonify({'error': 'User not found or access denied'}), 404
         
         # Parse target date (if provided) or use default date (30 days from now)
         target_date_str = data.get('target_date')
@@ -67,7 +87,6 @@ def add_goal():
         target_fat_percentage = float(data.get('target_fat_percentage')) if data.get('target_fat_percentage') else None
         target_muscle_mass = float(data.get('target_muscle_mass')) if data.get('target_muscle_mass') else None
         description = data.get('description')
-        user_id = data.get('user_id')
         created_at = datetime.now()
         
         # Use raw SQL to insert the goal with all fields including start_date
@@ -85,7 +104,7 @@ def add_goal():
             'target_fat_percentage': target_fat_percentage,
             'target_muscle_mass': target_muscle_mass,
             'description': description,
-            'user_id': user_id,
+            'user_id': requested_user_id,
             'created_at': created_at
         })
         db.session.commit()
@@ -105,7 +124,7 @@ def add_goal():
             # Refresh the goal
             created_goal = Goal.query.get(goal_id)
         
-        logger.info(f"New goal added: ID={goal_id}, target_date={target_date}, target_weight={target_weight}kg, user_id={user_id}")
+        logger.info(f"New goal added: ID={goal_id}, target_date={target_date}, target_weight={target_weight}kg, user_id={requested_user_id}")
         
         # Return the created goal
         return jsonify(created_goal.to_dict()), 201
@@ -115,10 +134,18 @@ def add_goal():
         return jsonify({'error': 'Failed to add goal'}), 500
 
 @goals_bp.route('/<int:goal_id>', methods=['DELETE'])
+@login_required
 def delete_goal(goal_id):
     try:
-        goal = Goal.query.get(goal_id)
+        logger.info(f"Processing DELETE request for goal ID: {goal_id} by account {current_user.id}")
+        
+        # Get all user IDs for the current account
+        user_ids = [user.id for user in current_user.users]
+        
+        # Find goal and verify it belongs to the current account
+        goal = Goal.query.filter(Goal.id == goal_id, Goal.user_id.in_(user_ids)).first()
         if not goal:
+            logger.warning(f"Goal {goal_id} not found or access denied for account {current_user.id}")
             return jsonify({'error': 'Goal not found'}), 404
             
         logger.info(f"Deleting goal: ID={goal_id}, target_date={goal.target_date.strftime('%Y-%m-%d')}, user_id={goal.user_id}")
@@ -134,10 +161,18 @@ def delete_goal(goal_id):
         return jsonify({'error': 'Failed to delete goal'}), 500
 
 @goals_bp.route('/<int:goal_id>', methods=['PUT'])
+@login_required
 def update_goal(goal_id):
     try:
-        goal = Goal.query.get(goal_id)
+        logger.info(f"Processing PUT request for goal ID: {goal_id} by account {current_user.id}")
+        
+        # Get all user IDs for the current account
+        user_ids = [user.id for user in current_user.users]
+        
+        # Find goal and verify it belongs to the current account
+        goal = Goal.query.filter(Goal.id == goal_id, Goal.user_id.in_(user_ids)).first()
         if not goal:
+            logger.warning(f"Goal {goal_id} not found or access denied for account {current_user.id}")
             return jsonify({'error': 'Goal not found'}), 404
             
         data = request.json

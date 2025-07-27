@@ -49,7 +49,7 @@ def database_info():
         
         # Get table counts
         result['table_counts'] = {
-            'entriess': Entry.query.count(),
+            'entries': Entry.query.count(),
             'goals': Goal.query.count(),
             'users': User.query.count(),
             'accounts': Account.query.count()

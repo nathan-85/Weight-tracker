@@ -1,17 +1,25 @@
 from flask import Blueprint, jsonify
 from weight_tracker.models import Entry, Goal, User
 from weight_tracker.config import logger
+from flask_login import current_user, login_required
 from weight_tracker.utils import infer_belly_circumference
 
 progress_bp = Blueprint('progress', __name__, url_prefix='/api/progress')
 
 @progress_bp.route('', methods=['GET'])
+@login_required
 def get_progress():
     try:
-        logger.info("Processing GET request for progress")
-        # Get the latest entry and goal
-        latest_entry = Entry.query.order_by(Entry.date.desc()).first()
-        goals = Goal.query.order_by(Goal.target_date).all()
+        logger.info(f"Processing GET request for progress for account {current_user.id}")
+        # Get all user IDs for the current account
+        user_ids = [user.id for user in current_user.users]
+        if not user_ids:
+            logger.warning(f"No users found for account {current_user.id}")
+            return jsonify([])
+        
+        # Get the latest entry and goals for users belonging to the current account
+        latest_entry = Entry.query.filter(Entry.user_id.in_(user_ids)).order_by(Entry.date.desc()).first()
+        goals = Goal.query.filter(Goal.user_id.in_(user_ids)).order_by(Goal.target_date).all()
         
         if not latest_entry or not goals:
             logger.warning("Cannot calculate progress: missing entries or goals")

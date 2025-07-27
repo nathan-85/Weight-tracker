@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from weight_tracker.config import logger, SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS, SQLALCHEMY_ECHO
 from weight_tracker.models import db
@@ -51,6 +51,15 @@ def create_app():
     # Frontend serving route
     @app.route('/', methods=['GET'])
     def serve():
+        return app.send_static_file('index.html')
+    
+    # Catch-all route for React Router - serve React app for all non-API routes
+    @app.route('/<path:path>', methods=['GET'])
+    def catch_all(path):
+        # Don't serve React app for API routes
+        if path.startswith('api/'):
+            return jsonify({'error': 'Not found'}), 404
+        # Serve React app for all other routes
         return app.send_static_file('index.html')
     
     logger.info("Application initialized successfully")

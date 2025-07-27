@@ -20,13 +20,17 @@ def add_admin_column():
     
     with app.app_context():
         try:
-            # Check if column already exists
-            result = db.session.execute(text("PRAGMA table_info(account)"))
-            columns = [row[1] for row in result.fetchall()]
+            # Check if column already exists (PostgreSQL version)
+            result = db.session.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'account' AND column_name = 'is_admin'
+            """))
+            column_exists = result.fetchone() is not None
             
-            if 'is_admin' not in columns:
+            if not column_exists:
                 print("Adding is_admin column to Account table...")
-                db.session.execute(text("ALTER TABLE account ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL"))
+                db.session.execute(text("ALTER TABLE account ADD COLUMN is_admin BOOLEAN DEFAULT FALSE NOT NULL"))
                 db.session.commit()
                 print("✅ Successfully added is_admin column")
                 
@@ -36,7 +40,7 @@ def add_admin_column():
                     account_id, username = first_account
                     response = input(f"Make '{username}' (ID: {account_id}) an admin? (y/N): ").strip().lower()
                     if response in ['y', 'yes']:
-                        db.session.execute(text("UPDATE account SET is_admin = 1 WHERE id = :id"), {"id": account_id})
+                        db.session.execute(text("UPDATE account SET is_admin = TRUE WHERE id = :id"), {"id": account_id})
                         db.session.commit()
                         print(f"✅ Made '{username}' an admin")
             else:
@@ -54,5 +58,5 @@ if __name__ == "__main__":
     print("\nMigration completed!")
     print("\nTo make an account admin, you can either:")
     print("1. Run this script again to make the first account admin")
-    print("2. Update directly in database: UPDATE account SET is_admin = 1 WHERE username = 'your_username';")
+    print("2. Update directly in database: UPDATE account SET is_admin = TRUE WHERE username = 'your_username';")
     print("3. Use the admin endpoints once you have at least one admin account") 

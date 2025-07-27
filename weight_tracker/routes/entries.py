@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from weight_tracker.models import db, Entry
 from weight_tracker.config import logger
+from flask_login import current_user
+from sqlalchemy.exc import IntegrityError
 
 entries_bp = Blueprint('entries', __name__, url_prefix='/api/entries')
 
@@ -36,6 +38,9 @@ def add_entry():
         else:
             entry_date = datetime.now()
         
+        # Get account_id from current_user if authenticated, otherwise None for backward compatibility
+        account_id = current_user.id if current_user.is_authenticated else None
+        
         # Create new entry
         new_entry = Entry(
             date=entry_date,
@@ -43,16 +48,28 @@ def add_entry():
             neck=float(data.get('neck')) if data.get('neck') else None,
             belly=float(data.get('belly')) if data.get('belly') else None,
             hip=float(data.get('hip')) if data.get('hip') else None,
-            user_id=data.get('user_id')  # This can be null for backward compatibility
+            user_id=data.get('user_id'),  # This can be null for backward compatibility
+            account_id=account_id
         )
         
         db.session.add(new_entry)
         db.session.commit()
         
-        logger.info(f"New entry added: ID={new_entry.id}, weight={new_entry.weight}kg, user_id={new_entry.user_id}, date={new_entry.date.strftime('%Y-%m-%d')}")
+        logger.info(f"New entry added: ID={new_entry.id}, weight={new_entry.weight}kg, user_id={new_entry.user_id}, account_id={new_entry.account_id}, date={new_entry.date.strftime('%Y-%m-%d')}")
         
         # Return the created entry
         return jsonify(new_entry.to_dict()), 201
+    except IntegrityError as e:
+        db.session.rollback()
+        if "duplicate key value violates unique constraint" in str(e):
+            logger.error(f"Duplicate key error adding entry: {e}")
+            return jsonify({
+                'error': 'Database sequence error detected. Please contact administrator to run database maintenance.',
+                'technical_details': 'Duplicate key constraint violation - sequence may be out of sync'
+            }), 500
+        else:
+            logger.error(f"Integrity error adding entry: {e}")
+            return jsonify({'error': 'Data integrity error'}), 400
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error adding entry: {e}")

@@ -115,6 +115,10 @@ def add_goal():
         # Retrieve the goal to return it
         created_goal = Goal.query.get(goal_id)
         
+        if created_goal is None:
+            logger.error(f"Failed to retrieve created goal with ID {goal_id}")
+            return jsonify({'error': 'Goal was created but could not be retrieved'}), 500
+        
         # Check if start_date is set, and if not, fix it
         if created_goal.start_date is None:
             logger.warning(f"start_date is NULL for goal {goal_id}, fixing...")
@@ -122,7 +126,7 @@ def add_goal():
             db.session.execute(fix_stmt, {'start_date': start_date, 'id': goal_id})
             db.session.commit()
             # Refresh the goal
-            created_goal = Goal.query.get(goal_id)
+            db.session.refresh(created_goal)
         
         logger.info(f"New goal added: ID={goal_id}, target_date={target_date}, target_weight={target_weight}kg, user_id={requested_user_id}")
         

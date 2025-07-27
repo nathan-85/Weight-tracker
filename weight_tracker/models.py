@@ -103,6 +103,13 @@ class Goal(db.Model):
         # If start_date is None, use created_at as fallback
         start_date_value = self.start_date if self.start_date else self.created_at
         
+        # Safely format start_date, using current date if both start_date and created_at are None
+        if start_date_value:
+            start_date_str = start_date_value.strftime('%Y-%m-%d')
+        else:
+            from datetime import datetime
+            start_date_str = datetime.now().strftime('%Y-%m-%d')
+        
         return {
             'id': self.id,
             'target_date': self.target_date.strftime('%Y-%m-%d'),
@@ -110,7 +117,7 @@ class Goal(db.Model):
             'target_fat_percentage': self.target_fat_percentage,
             'target_muscle_mass': self.target_muscle_mass,
             'description': self.description if self.description is not None else '',
-            'created_at': self.created_at.strftime('%Y-%m-%d'),
+            'created_at': self.created_at.strftime('%Y-%m-%d') if self.created_at else datetime.now().strftime('%Y-%m-%d'),
             'user_id': self.user_id,
-            'start_date': start_date_value.strftime('%Y-%m-%d')
+            'start_date': start_date_str
         }

@@ -16,6 +16,7 @@ import NewProfile from './pages/NewProfile';
 import EditProfile from './pages/EditProfile';
 import EditEntry from './pages/EditEntry';
 import Settings from './pages/Settings';
+import Admin from './pages/Admin';
 import MobileNav from './components/MobileNav';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -38,6 +39,7 @@ function App() {
               <Route path="/goals" element={<ProtectedRoute requiresProfile><Goals /></ProtectedRoute>} />
               <Route path="/progress" element={<ProtectedRoute requiresProfile><Progress /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               {isDebugMode && <Route path="/debug" element={<ProtectedRoute><Debug /></ProtectedRoute>} />}
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/profile/new" element={<ProtectedRoute><NewProfile /></ProtectedRoute>} />

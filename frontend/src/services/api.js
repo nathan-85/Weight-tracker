@@ -197,6 +197,24 @@ export const deleteAccount = async () => {
   }
 };
 
+export const getAdminAccounts = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/auth/admin/accounts`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const adminDeleteAccount = async (accountId) => {
+  try {
+    const response = await axios.delete(`${API_URL}/auth/admin/delete-account/${accountId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getAuthStatus = async () => {
   try {
     const response = await axios.get(`${API_URL}/auth/status`);

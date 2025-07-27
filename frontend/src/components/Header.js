@@ -105,6 +105,12 @@ const Header = ({ isDebugMode }) => {
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
 
+  // Add admin item if user is admin
+  if (currentAccount?.is_admin) {
+    drawerNavItems.push({ name: 'Admin', path: '/admin', icon: <SettingsIcon /> });
+    desktopMenuItems.push({ text: 'Admin', icon: <SettingsIcon />, path: '/admin' });
+  }
+
   if (hasProfiles) {
     drawerNavItems = [
       { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },

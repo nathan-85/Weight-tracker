@@ -11,6 +11,7 @@ class Account(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Relationship to access users belonging to this account
@@ -26,6 +27,7 @@ class Account(db.Model, UserMixin):
         return {
             'id': self.id,
             'username': self.username,
+            'is_admin': self.is_admin,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

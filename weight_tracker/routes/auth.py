@@ -83,3 +83,91 @@ def delete_account():
         db.session.rollback()
         logger.error(f"Error deleting account: {e}")
         return jsonify({'error': 'Failed to delete account'}), 500 
+
+@auth_bp.route('/admin/delete-account/<int:account_id>', methods=['DELETE'])
+@login_required
+def admin_delete_account(account_id):
+    try:
+        # Check if current user is admin
+        if not current_user.is_admin:
+            logger.warning(f"Non-admin user {current_user.username} attempted to delete account {account_id}")
+            return jsonify({'error': 'Unauthorized - Admin access required'}), 403
+        
+        # Find the account to delete
+        account = Account.query.get(account_id)
+        if not account:
+            return jsonify({'error': 'Account not found'}), 404
+        
+        # Prevent admin from deleting their own account
+        if account_id == current_user.id:
+            return jsonify({'error': 'Cannot delete your own admin account'}), 400
+            
+        username = account.username
+        logger.info(f"Admin {current_user.username} starting deletion of account ID: {account_id}, username: {username}")
+        
+        # Count data before deletion for logging
+        user_count = User.query.filter_by(account_id=account_id).count()
+        entry_count = Entry.query.filter_by(account_id=account_id).count()
+        goal_count = Goal.query.filter_by(account_id=account_id).count()
+        
+        # Delete all entries associated with this account
+        Entry.query.filter_by(account_id=account_id).delete()
+        
+        # Delete all goals associated with this account
+        Goal.query.filter_by(account_id=account_id).delete()
+        
+        # Delete all users associated with this account
+        User.query.filter_by(account_id=account_id).delete()
+        
+        # Delete the account itself
+        db.session.delete(account)
+        db.session.commit()
+        
+        logger.info(f"Admin {current_user.username} successfully deleted account {username}. Deleted: {user_count} users, {entry_count} entries, {goal_count} goals")
+        
+        return jsonify({
+            'message': f'Account {username} deleted successfully',
+            'deleted_data': {
+                'users': user_count,
+                'entries': entry_count,
+                'goals': goal_count
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Admin account deletion error: {e}")
+        return jsonify({'error': 'Failed to delete account'}), 500
+
+@auth_bp.route('/admin/accounts', methods=['GET'])
+@login_required
+def admin_list_accounts():
+    try:
+        # Check if current user is admin
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized - Admin access required'}), 403
+        
+        # Get all accounts with user counts
+        accounts = db.session.query(
+            Account.id,
+            Account.username,
+            Account.is_admin,
+            Account.created_at,
+            db.func.count(User.id).label('user_count')
+        ).outerjoin(User).group_by(Account.id).all()
+        
+        account_list = []
+        for account in accounts:
+            account_list.append({
+                'id': account.id,
+                'username': account.username,
+                'is_admin': account.is_admin,
+                'created_at': account.created_at.isoformat() if account.created_at else None,
+                'user_count': account.user_count
+            })
+        
+        return jsonify({'accounts': account_list}), 200
+        
+    except Exception as e:
+        logger.error(f"Error listing accounts: {e}")
+        return jsonify({'error': 'Failed to fetch accounts'}), 500 

@@ -188,6 +188,15 @@ export const logout = async () => {
   }
 };
 
+export const deleteAccount = async () => {
+  try {
+    const response = await axios.delete(`${API_URL}/auth/delete-account`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getAuthStatus = async () => {
   try {
     const response = await axios.get(`${API_URL}/auth/status`);

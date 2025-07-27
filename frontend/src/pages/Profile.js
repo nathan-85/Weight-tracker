@@ -240,7 +240,6 @@ const Profile = () => {
                     <IconButton 
                       color="error" 
                       onClick={() => handleDeleteClick(user)}
-                      disabled={users.length <= 1} // Prevent deleting the last user
                     >
                       <DeleteIcon />
                     </IconButton>

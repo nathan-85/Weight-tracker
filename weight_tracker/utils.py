@@ -25,7 +25,7 @@ def calculate_body_fat_percentage(weight, neck, belly, height=185, gender='male'
             body_fat = 163.205 * np.log10(belly_inches - neck_inches) - 97.684 * np.log10(height_inches) - 78.387
         else:
             hip_inches = hip / 2.54
-            body_fat = 163.205 * np.log10(belly_inches + hip_inches - neck_inches) - 97.684 * np.log10(height_inches) - 104.912
+            body_fat = 163.205 * np.log10(belly_inches + hip_inches - neck_inches) - 97.684 * np.log10(height_inches) - 78.387
     
     # Ensure the result is within reasonable bounds
     return max(min(body_fat, 50), 3)
@@ -79,8 +79,8 @@ def infer_belly_circumference(fat_percentage, neck, height, gender='male', hip=N
                 belly_inches = belly_minus_neck + neck_inches
             else:
                 hip_inches = hip / 2.54
-                # Reverse full female formula: body_fat = 163.205 * log10(belly + hip - neck) - 97.684 * log10(height) - 104.912
-                log_arg = (fat_percentage + 104.912 + 97.684 * np.log10(height_inches)) / 163.205
+                # Reverse full female formula: body_fat = 163.205 * log10(belly + hip - neck) - 97.684 * log10(height) - 78.387
+                log_arg = (fat_percentage + 78.387 + 97.684 * np.log10(height_inches)) / 163.205
                 belly_plus_hip_minus_neck = 10**log_arg
                 belly_inches = belly_plus_hip_minus_neck + neck_inches - hip_inches
         
